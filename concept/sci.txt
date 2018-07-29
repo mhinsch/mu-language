@@ -1,0 +1,147 @@
+The problem of the dichotomy between structs and classes on one hand and value 
+and reference semantics on the other hand has been discussed several times 
+before and I'm sure everybody is bored to death by the subject right now.
+Anyways I'm going to add my own thoughts to it ;-).
+
+This post comes in three parts:
+I will start off by explaining why this dichotomy is a problem (in certain
+situations). In part II I'll go on a bit about why I think it exists in the 
+first place. In part III I will propose a solution. It's kind of radical and
+might be entirely unworkable but I think it's interesting enough to stimulate
+some discussion.
+
+On to part I...
+
+
+Part I - Motivation
+
+A large part of my work as a theoretical biologist consists of writing 
+individual-based simulations. That means I have programs with LOTS (up to tens 
+of thousands) of relatively small objects. In every step of the main loop the
+program goes through all or most of these objects and reads or manipulates them.
+Depending on the specific situation there can also be a lot of turnover, i.e.
+objects are removed and created quite frequently. Add to that the fact that 
+faster simulation make it possible to run more parameter combinations (=>
+more data => nicer results => fame and fortune ;-) and you can see that arrays 
+containing values and thus structs are the way to go. That means however no 
+inheritance, no encapsulation, no OOP. This already sucks per se but even more
+if you have teach or cooperate with students with little programming experience.
+They have a hard time structuring their code properly anyways and it really
+helps when you can just tell them to make all members private so that the 
+compiler can help them keeping stuff encapsulated.
+
+I'm sure this is a very specific situation but for me it's really *the* point
+preventing me from using D.
+
+
+Part II - Problem
+
+As has been explained by several people several times there is a good reasons 
+for keeping structs and classes separate:
+-  RTTI (in the general sense, includes vtables and such) makes classes
+   byte-incompatible with the respective sequence of plain types. Classes with
+   RTTI therefore can't be (easily) used as "masks" for plain sequences of
+   bytes.
+There are also good reasons to exclusively use reference semantics with 
+classes:
+- Slicing, that is the loss of information when assigning a subclass object to
+  a superlass object is avoided.
+- Consistent (runtime) polymorphism, i.e. since class objects are always 
+  references method calls can be polymorphic per default (which would be 
+  impossible in C++).
+
+The (IMHO quite high) cost for solving these problems is the existence of two
+relatively similar but largely incompatible concepts in the language.
+
+
+Part III - Solution
+
+The basic idea behind my solution is actually really simple. You just have to
+realize that (OOP-) inheritance as it is usually done is a combination of
+two different concepts - composition and polymorphism. What would happen if
+we disentangled these concepts?
+
+My suggestion would be to completely remove virtual functions from the language.
+Instead use interfaces to provide ad hoc runtime polymorphism.
+
+As before interfaces define a set of methods a class has to provide. As before
+you can let a class derive from an interface to declare (and let the compiler
+check) its conformance to the interface. But now this is not obligatory anymore.
+
+There are now two fundamentally different types of pointers in the language:
+a) *non-polymorphic* pointers to plain data/classes
+b) *polymorphic* pointers to interfaces
+At any point a pointer of type a) can be cast to a pointer of type b) *at which
+point the conformance to the interface is tested*. This is easily done at 
+compile time since in the non-polymorphic world all types are known.
+
+I'll give an example:
+
+---
+
+class A
+	{
+	void foo(int a);
+	}
+
+class B
+	{
+	void foo(int b);
+	}
+
+
+interface Foo
+	{
+	void foo(int c);
+	}
+
+A a;
+B b;
+
+Foo * f1 = &a, f2 = &b;
+f1.foo(42);		// calls a.foo
+
+---
+
+You could even introduce a way to construct an interface from a given class so
+that existing class hierarchies could remain completely unchanged:
+
+---
+
+interface(B) * i = &b;
+
+---
+
+Internally a pointer to an interface would actually be a struct containing the
+vtable and a pointer to the object which would be a tiny bit more costly than
+a class reference.
+
+Since polymorphism has now its own separate language structure composition can
+be made much more powerful (similar ideas have recently been discussed for 
+structs):
+
+---
+
+class A {...}
+class B {...}
+
+class C : A,B {...}
+
+// syntactic sugar for
+
+class C
+	{
+	A super_0;
+	B super_1;
+	
+	use super_0;
+	use super_1;
+	}
+	
+---
+
+I think this solves all problems I mentioned above except one, which is slicing.
+To be honest I never saw the particular danger in that one in the first place.
+Maybe I'm totally missing something but isn't that just another case of a lossy
+cast? In that case my proposal solves that problem as well since all potentially
+lossy (slicy ;-) casts can be detected at compile time and the user warned.

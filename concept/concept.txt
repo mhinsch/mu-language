@@ -1,0 +1,517 @@
+Aims
+----
+
+* unify data and function members
+>	- make () optional everywhere
+* unify function calls and control structures, parsed in the same way, semantic
+  analysis plugs in "built-in" stuff
+	!iterators vs. closures!!!
+
+!! distinguish between type and structure !!
+(see "properties" vs. functions vs. variables)
+
+eager vs. lazy?
+when to evaluate blocks and when to assign them?
+- (code) literals are not (automatically) evaluated
+	- .call evaluates
+	? syntactic position evaluates
+- values are automatically evaluated
+	- & prevents evaluation
+
+	
+
+* expression language - let all blocks have a return value (???)
+	+ more consistent
+	+ concise code
+	- easy to forget about return value/type
+	- syntax?
+* functions as objects
+* separate interface and implementation (-> Objective C)
+	problems:
+	- double effort of typing
+
+// *** interfaces
+
+A @ class =
+	{
+	i @ int
+	
+	foo(a' int) ' = ()
+	
+	blubb(int)' ~>A
+	}
+
+B' class =
+	{
+	f' float
+	
+	foo(b' int)
+	}
+
+C' class =
+	;s' string
+
+foo(c' @C, a' int)'
+
+Foo' interface =
+	{
+	foo(c' int)'
+	}
+
+
+a' A
+b' B
+c' C
+
+(f1, f2, f3)' @Foo = a, b, c
+i' @B.interface = b
+
+a.foo 42
+
+// *** methods & functions
+
+problems:
+	- function call without () ambiguous if
+	  operators double as infix and prefix (-, *, +, &)
+>	  - precedence
+
+
+int a
+
+foo f1, 42
+f1 .foo 42			// will that work? ambiguous syntax?
+a = foo i, 42
+a = foo -a			// ?: foo(-a) or (foo) - (a)
+					// compiler can (sometimes) work it out but: 
+					// - misleading for reader
+					// - parsing dependent on type of variables
+					// ?? remove all prefix operators which double as infix:
+					// -, *, +, &
+					// -*, /, /, /
+					
+a = foo bla 3;		// ?: foo(bla(3)) or bla(foo, 3) (or foo(bla)(3))
+a = foo .bla 3;		// ?: foo(.bla, 3) or foo.bla(3) == bla(foo, 3)
+
+foo a1: 3, a2: bla	// ?: foo(3, bla) or foo(a1(3), a2(bla))
+
+2 function call operators:
+	- concatenation: high priority, requires () with tuples
+		3 + fn 3 * 5			// parsed as: 3 + (fn 3) * 5
+		// but:
+		3 + fn(3, 42) * 5
+		but:
+		low priority at beginning of (sub-)expression
+			-> after newline, ;, (, =
+//	- `: low priority, requires () in expressions
+//		myfun` a, 33, "this is a string"
+//		// but:
+//		3 + (myfun` a, b) * 3
+	
+maybe move , to higher priority??
+
+a.(A.foo)(42);		 
+a.(a.typeof.foo)(42);
+foo
+
+
+class A = 
+	{
+	def int test(int a) = 
+		;
+	}
+
+A a
+println a.test(3)
+
+// should be equivalent:
+
+println A.test(a, 3);	// definitely more consistent, since class defines namescape
+
+// *** operators
+
+42 + 23;
+42.op+(23);
+op+(42, 23);
+
+a = a.blubb(42);
+a blubb= 42;
+
+
+a = ++$b;
+a = $b.modify();
+a = $$ + 23
+
+
+operator		  binary
+
+
+.					x			select
+
+					
+					x			function call (inside expression)
+
+**					x			arithmetic
+
+* / %				x			arithmetic
+
+~					r			arithmetic
++ -					x			arithmetic
+++					x			concatenate
+
+< > <= >= 			x			comparison
+== ><				x			comparison
+
+& 					x			logical
+|					x			logical
+
+^					x			return
+
+:					x			init, declaration
+
+,					x			tuple construction
+
+`					x			function call
+
+=					x			assignment
+
+;					x			exp-lit
+
+(){}							grouping
+
+
+
+// /* */							comments
+
+
+unused
+
+` ? @ # $ \ '
+
+
+// *** types, etc.
+
+types:
+	int, float, vector[map[string,int]], (int, float)
+	int->int, (float, int)->()
+	type, (type, int)
+	type, type -> type
+
+// *** composition
+
+D' class = A ++ B ++
+	{
+	A.foo aFoo;		// rename A.foo to aFoo
+	use B.foo bFoo;
+	use A.i iVar;
+	
+	C c;
+	use c.foo cFoo;	
+	}
+
+// *** these two are equivalent:
+
+class E = A {}
+
+class F
+	{
+	A super[0];
+	use super[0];
+	}
+
+// *** renaming
+
+use A ClassA;
+
+ClassA bla;
+use bla blubb;
+
+blubb.foo(42);
+
+// use foo bar -- error bec. ambiguous or applies to all?
+use foo(A*,int) bar;
+use C.foo bar;
+
+// *** ideas
+
+. as universal scope operator
+this assumed per default
+
+=> 
+
+float a;
+
+class A
+	{
+	int a;
+	
+	void fn();
+	}
+
+A.fn()
+	{
+	.a += ..a;	// .a eq. this.a, ..a one scope up
+	}
+
+---
+
+class == tuple + operations + namespace
+=> class extensible with *functions* and *static members*
+
+class A
+	{
+	int a;
+	float b;
+	
+	void inc()
+		{
+		.a++;
+		}
+	}
+
+equivalent to:
+
+type A = int a, float b + 
+	{
+	void inc(inout A this)
+		{
+		.a++;
+		}
+	}
+	
+---
+
+all member accesses are formally method calls
+=> "data polymorphism"
+	
+---
+
+named arguments
+
+fn(int arg1, float arg2)
+...
+fn(arg2: 3.7, arg1: 2)
+
+---
+
+template parameters:
+- types
+- values (with auto type?)
+- symbols
+
+---
+
+blocks:
+
+shared variables between 
+	- instances
+	- calls
+									type/
+						parameters	instance		shared		functions	code	
+*once*
+- class/struct			-			X			x			x			-
+- interface				-			x			x			x			-
+
+- namespace/module		-			-			X			x			-
+
+*often*
+- anonymous scope		-			x?			x			x			x
+- function/method		x			x?			x			?x			x
+- anonymous function		x			x?			x			?x			x
+
+class = type + namespace
+namespace = named scope
+function = stored scope (???)
+
+
+---
+
+int bla(int a, int b) =
+	{
+	shared int c;
+	int d;
+	
+	c = a + b;
+	
+	return c+a+b;
+	}
+
+// typeof(bla) == int (int, int)
+// should be?
+
+int bla(int a, int b) = 
+	int(int, int)
+	{
+	...
+	}
+
+
+bla(x, 42);
+
+-> internally:
+stack:
+int a	// copy of x
+int b	// 42
+int d	// ini
+
+int bla.c
+	
+equivalent to/		//????
+creates:
+
+class bla
+	{
+protected:
+	int c;
+	
+public:
+	int a, b;
+
+	bla(int a, int b)
+		{
+		.a, .b = a, b;
+		}
+	
+	operator()...
+	}
+
+=>		//????
+
+<classtype> (<arg> [,<args>])	// ambiguous with decl.: <classtype> <arg> [,<args>] 
+								// let semantic analysis figure it out?
+
+shortcut for			//?????
+
+<classtype> tmp = <args>;
+tmp();
+
+
+---
+
+generics:
+
+class Gen
+	{
+public:
+	// any type (type == builtin concept)
+	type T1;
+	// concept FLOAT_C
+	FLOAT_C T2;
+	const int a;
+	
+	...
+	void fn() {}
+	};
+
+	
+// specialization
+void Gen{T1>string}.fn()
+	{
+	}
+
+Gen{T1=int, T2=float, a=1} var1;
+Gen{int, float, 1} var3;
+
+def int bla(type a)
+	{
+	...
+	}
+
+---
+
+default parameters:
+
+fn(int a=1, float b=3.0, string c="bla");
+
+fn(,,"blubb);
+
+
+ignored return values:
+
+,a,, = fn(2, 3);
+
+---
+
+int bla(float, float) =
+	{
+	}
+
+---
+
+multiple return values
+
+
+int, float fn(int a)
+	{
+	return a+1, a*0.5;
+	}
+---
+
+free header - beginning of file until line with '---' ignored
+
+---
+
+closures:
+
+struct A=
+	{
+	int fn(int, float)=
+		{...}
+	}
+
+A a;
+
+int fp1(A, int, float) = &A.fn;	//static
+int fp2(int, float) = &a.fn;	//dynamic
+int fp3(float) = &a.fn(2);
+int fp4(int) = &a.fn(,0.5);
+
+---
+
+[] unambiguous function call operator
+
+---
+
+// sather iterators:
+// take block as implicit last parameter
+
+
+vector{int} vec;
+
+vec.each# 2 (auto el)
+	{
+	print el;
+	}
+
+// equivalent to:
+
+loop
+	{
+	return_type(vec.each#) el;
+	el = vec.each# 2;
+	print el;
+	}
+
+// equivalent to
+
+loop print vec.each# 2;
+
+
+MyClass[] bla;
+...
+bla.sort(auto a, b)
+	{
+	return a .gt` b;
+	}
+
+// no equivalent loop construct
+---
+
+namespace:
+
+scope Bla = {}
+
+default scope = filename
+
+scopes arbitrarily nestable
+
+each file scope with same name

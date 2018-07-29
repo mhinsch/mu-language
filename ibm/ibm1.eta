@@ -1,0 +1,51 @@
+
+
+{
+
+Simulation : macro((traits:_block, params:_block), type) 
+	{
+	nBlock : _block
+	
+	_each_expr` traits,
+		{ -> expr @ _expr
+		_switch_type` expr,
+		case: _decl,
+			{
+			decl @ _decl : _to_decl(expr)
+			d_get @ _decl : ("get" ++ _name(decl), _fn_type((), _d_type(decl)),
+				{_name(decl)})
+			d_set @ _decl : ("set" ++ _name(decl), _fn_type(t @ _d_type(decl), _d_type(decl)),
+				{_name(decl) = t})
+			_add_decl` nBlock, d_get
+			_add_decl` nBlock, d_set
+			},
+		else:
+			{
+			_error` "unexpected node type in macro Simulation"
+			}
+		
+		}
+	}
+
+sim @ Simulation :
+	(
+	traits: 
+		{
+		mu @ float ++ 
+			mutate (
+				_cpp_code "\{mu} += rng.gauss(0, \{mutStep}*2); \{mu} = max(0.000001f, float(\{mu}));")
+			
+		
+		min @ float
+		rangeI @ float
+		rangeO @ float
+		},
+		
+	params: 
+		{
+		iniNum @ int : 600
+		iniNPatches @ int : 10
+		}
+	)
+
+}

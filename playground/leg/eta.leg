@@ -1,0 +1,141 @@
+%{
+//#define YYSTYPE Node *
+#include <cstdio>
+#include <iostream>
+
+//#define YY_DEBUG
+#define YYSTYPE string
+
+//#include "visitor.h"
+
+//int yylex (void);
+//void yyerror (char const *);
+
+using namespace std;
+
+int source_line = 0;
+%}
+
+
+
+program 	= lines	- EOF						{printf("done on line %d\n", source_line); $$ = "";}
+
+lines 		= d1:sline (nll 						
+				d2:sline		 				{d1 += "\nd: " + d2;}
+				)*								{printf("decls: %s\n", d1.c_str()); $$ = "d: " + d1; }
+	
+all_literal	= l2:code_lit						{$$ = "cl: " + l2;}
+			| l1:literal						{$$ = "lit";}
+			| <[^\n]+>							{printf("syntax error in line %d:\n>\t%s\n", source_line, yytext); $$ = "error";}
+
+code_lit	= l:line_stmnt						{$$ = l;}
+			| m:multi_stmnt						{$$ = m;}
+
+line_stmnt	= - s:statements -					{$$ = "{sts: " + s + "}";}
+
+multi_stmnt	= - '{' s1:sline (nll 
+				s2:sline 						{s1 += "\nsl: " + s2;}
+				)* - '}'						{$$ = "\n\t{sl: " + s1 + "\n\t}\n";}
+
+sline		= s:statements						{$$ = s;}
+			| -									{$$ = "";}
+			| - "//" [^\n]*						{$$ = "//";}
+			| <([^ \t\n]+-)+>					{printf("syntax error2 in line %d:\n>\t%s\n", source_line, yytext); $$ = "error";}
+
+statements	= s1:statement (- ';' -
+				s2:statement?					{s1 += "; " + s2;}
+				)*								{$$ = "s: " + s1;}
+
+statement 	= e1:expression ( assign 		
+				e2:expression 					{e1 += " = " + e2;}
+				)*								{$$ = "ex: " + e1;}
+
+assign 		= bin_op? op_assign					{$$ = "ass";}
+
+expression 	= f:func_call						{$$ = f;}
+			| t:tuple_exp						{$$ = t;}
+
+func_call 	= n:name - s1:sum ( op_comma 
+				s2:sum 							{s1 += ", " + s2;}
+				)+								{$$ = "f: " + n + " (" + s1 + ")";}
+
+tuple_exp 	= s1:sum ( op_comma 
+				s2:sum 							{s1 += "," + s2;}
+				)*								{$$ = "tup: (" + s1 + ")"}
+
+sum			= p1:product ( (op_add | op_sub) 
+				p2:product 						{p1 += " + " + p2;}
+				)*								{$$ = "+: (" + p1 + ")";}
+
+product		= t1:term ( (op_mul | op_div | op_mod) 
+				t2:term 						{t1 += " * " + t2;}
+				)*								{$$ = "*: (" + t1 + ")";}
+
+term 		= f:fcall							{$$ = f;}
+			| t1:term2 							{$$ = t1;}
+			| ( "--" | "++" ) - t2:term			{$$ = t2;}
+
+term2 		= "(" -- s:statement ")" -			{$$ = "(" + s + ")";}
+			| n1:name - op_dot n2:name -		{$$ = ".:" + n1 + "." + n2;}
+			| l:literal -						{$$ = "l:(" + l +")";}
+			| n:name -							{$$ = "n:" + n;}
+
+fcall		= t1:term2 t2:term					{$$ = "fn: " + t1 + "(" + t2 + ")";}
+
+name			= <[a-zA-Z_][a-zA-Z_0-9]*>		{$$ = string("<") + yytext + ">";}
+
+literal		= s:string_literal					{$$ = s;} 
+			| n:num_literal						{$$ = n;}
+			| d:declaration - c1:multi_stmnt	{$$ = d + " : " + c1;}
+			| c2:multi_stmnt					{$$ = c2;}
+
+string_literal = '"' < [^"]* > '"'				{$$ = yytext;}
+			
+num_literal	= < [0-9]+ | [0-9]+("."[0-9]+)? >	{$$ = yytext;}
+
+bin_op		= '+' | '-' | '/' | '*' | '%'
+
+op_define	= ":=" --
+
+op_dot		= "." --
+
+op_comma	= "," --
+
+op_assign	= "=" --					
+
+op_add		= "+" --
+
+op_sub		= "-" --
+
+op_mul		= "*" --
+
+op_div		= "/" --
+
+op_mod		= "%" --
+
+-			= [ \t]*
+--			= - (nl -)?
+
+nll			= - nl -
+nl			= "\n"				{++source_line;}
+
+EOF			= !.
+
+%%
+
+main ()
+	{
+	if (! yyparse())
+		printf("error on line %d\n", source_line);
+	else
+		printf("parsed %d lines\n", source_line);
+	}
+
+#include <stdio.h>
+     
+void yyerror (char const * s)  /* Called by yyparse on error */
+	{
+//	yydebug = 1;
+	printf ("%s\n", s);
+	}
+

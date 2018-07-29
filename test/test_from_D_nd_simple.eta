@@ -1,0 +1,74 @@
+This is the test program from the D website rewritten in Eta.
+
+
+begin
+import std.stdio
+
+main: args: Vec String =>
+	begin 
+
+    println "Hello World, Reloaded"
+
+    cl: (CmdLin String) args
+	
+	loop do
+		(arg, argNum, suffix): cl.each##
+        println` argNum, suffix, "arg: ", arg
+		done
+
+	tmp: Module
+		do
+		// upper case => type
+		Specs: (count: Int, allocated: Int)
+	
+		argspecs: out &Specs =>
+			do
+			s: new Specs
+			s.count = main.args.length	
+			s.allocated = typeof#args.sizeof
+			main.args.each arg =>
+				\ s.allocated += arg.length * (typeof arg 0).sizeof
+				
+			out s
+			done
+		done
+
+	println` "argc = \[tmp.argspecs.count], allocated = ", 
+		tmp..argspecs..allocated
+	end
+
+CmdLin: STRING => 
+\ Class begin
+
+public 
+
+	// not consistent yet
+    init: ($!, .args!) => beginend
+
+	// should actually be:
+	// each (block (STRING, int, STRING):) : ()
+	each: ($, yield: (STRING, int, STRING) ) =>
+		begin
+		n: 0
+		loop \ yield ($.args.each#, (n = $+1), suffix n)
+		end
+		
+    suffix: ($, n: Int, out STRING) =>
+    	begin
+        suffix: "th"
+        
+		switch` n,
+			do
+			0 => \ suffix = "st"		
+			1 => \ suffix = "nd"
+			2 => \ suffix = "rd"
+			$ => do done
+			done
+		
+		out suffix
+		end
+
+private
+
+    args: ~> Vec STRING
+end

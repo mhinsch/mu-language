@@ -1,0 +1,10 @@
+
+[Anjuta]
+Maximized=1
+Geometry=1280x771+0+28
+
+[File Loader]
+Files=file:///home/martin/devel/mopl/leg/eta.leg#1%%%file:///home/martin/devel/mopl/leg/test.eta#1%%%file:///home/martin/devel/mopl/leg/test2.eta#1
+
+[Execution]
+Run in terminal=2

@@ -1,0 +1,146 @@
+{
+
+// constant
+a :: int : 3
+
+// pure function
+// b () :: int =
+b :: ()->int : 
+	{
+	a :: int : 4
+	
+	<- a - 1
+	}
+
+// function with side-effects
+!c() :: int :
+	{
+	use \ a, b
+	text : "Hello World"
+	..print` text ++ endl, a, b
+	
+	<- 3
+	}
+
+d :: float->int :
+	{-> a1 ::
+	
+	out a1.int
+	}
+
+e :: ()->(()->int) :
+	{
+	// how to return the function instead of the value?
+	// out: b?
+	// or like this?
+	<- &b
+	}
+
+// how to make these equivalent?
+//{ d } 3.5
+//d 3.5
+
+// if they are, what about this?
+//{-> f::float; puts f; d} 3.5
+
+// maybe like so?
+//{ d } () : 3.5
+
+// what do these do and why?
+e
+// if this is supposed to call b, b () has to be forbidden
+// if it calls e, then e equiv. e() 
+e ()
+e () : ()
+
+
+if` a>b, then:
+	{
+	
+	}, else:
+	{
+	}
+
+// what's the difference between a, b and c?
+// difference between type of variable and type of expression?
+// to get typeof c == '()! -> int', c has to be prevented from exec. or has 
+// to be made a compile-time operator on symbol
+// maybe:
+// typeof c				// symbol
+// >	()! -> int
+// typeof (c)			// expression
+// >	int			
+// BUT: "lazy" operator needed anyways for 
+// c = {...}, assigning function pointer
+// a c, using c as callback
+// maybe:
+// c! = {...}, not needed?, implicit in =
+// a c?
+
+
+print a
+print b
+print c
+print d 3.5
+
+
+//d :: type = int
+
+// d2[e2::type] :: type = e2->() 
+// not supported yet
+
+prepare_problem (aa :: int) :
+	{
+	problem (a :: int) :
+		{
+		// how to make return actually return??
+		// anonymous vs. named blocks
+		// static vs. dynamic execution?
+		// type of the assigned variable 
+		//   it's just a literal that's used in an ini, after all
+		// thus if takes a block, whereas ::() takes a function
+		if` a<0, 
+			{<-}, 
+		else: 
+			\ problem(a-1)
+		}
+	
+	problem aa
+	}
+
+}
+
+Test :: class :
+	{
+	a :: int
+	b :: float
+	
+	__: (a::int, b::float)
+		{
+		$a : a
+		$b : b
+		}
+	
+	print () :: () : ; print` $a, $b
+	}
+
+t :: Test : (1, 3.5)
+
+t.print
+
+// ==
+
+Test :: namespace :
+	{
+	_type :: type :
+		{
+		a :: int
+		b :: float
+		}
+
+	__: (_$::_type, a::int, b::float)
+
+
+//::
+//	symbol, type
+//	symbol, kind

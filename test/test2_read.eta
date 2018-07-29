@@ -1,0 +1,44 @@
+
+
+do
+import Math
+
+Individual[Outer as type] as class is
+public do
+	_init(self!, x is .x, y is .y, en is .energy) as Self is \
+	
+	begin(self!, x as int, y as int, energy as float is 0.0) is \
+	
+	move(self!, (x,y) as int) is
+		\ self.x = x; self.y = y
+	
+	feed(self!, food as float) is
+		\ self.energy =+ food
+	
+	step(self) as (float, float) is
+		\ <- Math.cos(self.dir * self.speed), Math.sin(self.dir * self.speed)
+	end ++
+readonly do
+	x as int
+	y as int
+	energy as float
+	
+	speed as float
+	dir as float
+	end ++
+shared readonly \ env ~>Outer
+
+main is
+	do
+	Ind as type is Individual[World]
+	popul as vec[Ind] is ()
+	
+	100.times`
+		\ popul.push Ind(x is Math.rng 100, y is Math.rng 100, 3)
+	
+	// shouldn't it be like this?
+	popul.each` 
+		\ -> i as Ind; print i.energy
+	end
+
+end

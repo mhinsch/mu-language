@@ -1,0 +1,24 @@
+Dies ist ein Test
+
+
+{ 
+a: 1; e: a
+b: 2
+c: 3
+
+if: {1 }
+
+d: 	{
+	x: 1
+	a: 2
+	;; a should be unknown at this point
+	x = a
+	}
+
+if` a, 
+	[
+	a: 1
+	a + b + c + d
+	b = (1, 2) ;; comment
+	]
+}

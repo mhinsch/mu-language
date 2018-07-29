@@ -1,0 +1,341 @@
+/* An eta program consists of expressions: 
+	- set a new name for an existing value
+	- change value of existing name
+*/
+
+{
+use math
+
+// this?
+
+deriv[T @ type](fun @ T->T, x @ T) :
+	{
+	dx @: math::sqrt T::epsilon
+	out` (fun(x+dx) - fun(x-dx)) / (T 2.0 * dx)
+	}
+
+Array[el_type @ type] @ class :
+	{
+	el @ vec[el_type]
+	
+	each (range @ Range, yield @ el_type->()) @ () =
+		range.each` do:
+			{	-> n@
+			yield $.el[n]
+			}
+	}
+
+// or this?
+
+deriv[T : type](fun : T->T, x : T) ::
+	{
+	dx :: math.sqrt T.epsilon
+	out: (fun(x+dx) - fun(x-dx)) / (T 2.0 * dx)
+	}
+
+Array[el_type : type] : class ::
+	{
+	el : vec[el_type]
+	
+	each (range : Range, yield : el_type->()) : () =
+		range.each` do::
+			{	-> n:
+			yield .el[n]
+			}
+	}
+
+
+// or this?
+
+deriv{T : type}(fun : T->T, x : T) ::
+	[
+	dx := math.sqrt T.epsilon
+	out` (fun(x+dx) - fun(x-dx)) / (T 2.0 * dx)
+	]
+
+Array{el_type : type} : class ::
+	[
+	el : vec{el_type}
+	
+	each (range : Range, yield : el_type->()) : () :=
+		range.each` do..
+			[	-> n:
+			yield .el[n]
+			]
+	]
+
+
+
+/*
+At any point a variable name is identical to its value. The ! prefix operator
+takes a mutable reference of a variable. The ? prefix operator takes an
+immutable reference of a variable.
+An argument to a function which is specified as mutable has to be a mutable
+reference.
+Exception 1:
+	On the left hand side of an assignment operator variables are implicitly
+	referenced.
+
+
+
+*/
+
+
+cvar @: "a" ++ "\t" ++ " "
+ivar! @: 4				// mutable
+ivar2 @: ?ivar			// read-only ref
+ivar3! @: !ivar			// writable ref
+avar @: vec: 1, 2, 3
+avar2 @ vec[int]
+mvar @:  map` "bla" => 1, "blubb" => 2, cvar => ivar
+// mvar["bla"] => 1
+mvar2 @ string => int : ("bla", 1), ("blubb", 2), (cvar, 3)
+// doesn@t work since ,, has to be lower than = (for default args)
+//mvar4 : string => int = "bla", 1,, "blubb", 2,, cvar, 3
+mvar3 @ map[string, int] : "bla" => 1, "blubb" => 2, cvar => 3
+
+// name : type => (arg_type => ret_type)
+// low prec for :
+/*
+//fun2 (a_type : type) : (a,b:int,, c:float) => a_type = {}
+fun2[a_type : type] : (a,b:int=0,0,, c:float) -> a_type = {}
+fun2[a_type : type] : ()(a,b:int,, c:float) : a_type = {}
+fun2[a_type : type] (a,b:int,, c:float) : a_type = {}
+//s	(fun2 (a_type : type)) (a,b:int,, c:float) : a_type = {}
+sin(a:float) : float = {}
+sin : ()(a:float) : float
+	
+// high prec for :
+	
+//(fun2 a_type:type) : ((a,b):int, c:float) => a_type = {}
+fun2[a_type:type] : ((a,b):int, c:float) => a_type = {}
+	(fun2[a_type:type] ((a,b):int, c:float)) : a_type = {}
+//	((fun2 a_type:type) ((a,b):int, c:float)) : a_type = {}
+(sin (a:float)) : float = {}
+sin : ()(a:float) : float
+
+// with @ instead (low prec)
+	
+//fun2 (a_type @ type) @ (a,b @ int,, c @ float) => a_type = {}
+fun2[a_type @ type] @ (a,b @ int,, c @ float) => a_type = {}
+fun2[a_type @ type] (a,b @ int,, c @ float) @ a_type = {}
+//	(fun2 (a_type @ type)) (a,b @ int,, c @ float) @ a_type = {}
+sin (a @ float) @ float = {}
+sin @ ()(a @ float) @ float
+*/
+
+
+// implicit type
+sin(a @ float) @ float : {}
+// explicit type
+sin @ float->float : { a@ }->{}
+// ===
+sin @: {a @ float} -> {...}
+// ===
+sin @: {-> a @ float
+	...
+	}
+// ===
+_assign: _decl(_call(sin, _decl(a, float)), float, ()
+
+
+sin!(a @ float) @ float : {} 	// function pointer
+
+// fully implicit
+fun2[a_type @ type]((a,b) @ int, c @ float) @ a_type : {}
+// like this???
+fun2((a,b) @ int, c @ float) @ [a_type @ type] : {}
+// === more explicit
+fun2[a_type @ type] @ (int, int, float)->a_type : 
+	(a,b,c)@ -> {}
+// ???
+fun2 @ (int, int, float)->[a_type @ type] :
+	(a,b,c)@ -> {}
+// === fully explicit
+fun2  @  type => ( (int, int, float)-> auto ) : 
+	a_type@ =>
+		{
+		(int, int, float)->a_type = {(a,b,c)@}->{}
+		}
+
+Bla[t @ type] @ class : {...}
+// ===
+Bla @ type => type : t@ => class {...}
+// class @ type -> type
+
+
+fun2@ meta {_[] @ (a_type@ type) -> type = {out` _` @ ((a,b)@ int, c@ float)->a_type}}
+//	fun2 (a_type @ type) @ (a,b @ int,, c @ float) -> a_type = {}
+//	fun2[a_type @ type] @ (()((a,b) @ int, c @ float) @ a_type) = {}
+//	(fun2 (a_type @ type)) (a,b @ int,, c @ float) @ a_type = {}
+//	a_type@ fun2[type@ a_type](int@ (a,b), float@ c) = {}
+//	fun2[type@ a_type] (int@ (a,b), float@ c) @ a_type = {}
+
+fun2[int]` 1, 2, 3.0
+//(fun2 int) 1, 2, 3.0
+
+	
+print` "bla", "blo"
+
+
+if` x>0, do: 
+	{something;;and_something},
+else:
+	;some_other_thing
+
+anonym1 @ (i@ int , (j, k)@ float) : i: 42, j: 3.2, k: 0.0	// ???
+// or like this
+anonym1 @ (i@ int , (j, k)@ float) : (i: 42, j: 3.2, k: 0.0)	// ???
+anonym2 @ type {i@ int;; j@ float} : i: 42, j: 3.2				// ???
+// in prefix form
+//_=_ (_@_ (anonym2, type (;(_@_(i,int), _@_(j,float)))), (_::_(i,42), _::_(j,3.2)))
+anonym3 @: i: 42, j: 3.2						// ???
+
+// allowed???
+// maybe decl. returns (), therefore not allowed
+bla @: (i@:42),(j@:3.2),(k@:0.0)
+
+assert mvar .eq mvar2
+
+mvar.replace` 0..4, do: 
+	{	-> (k@, v!@)
+	print` k, v
+	out` v+1
+	}
+// ===
+loop`
+	{
+	(k,v) @: mvar.replace(0..4, #)// pseudo-parameter # refers to surrounding loop
+	print` k, v
+	}
+
+/*
+
+loop:
+	{
+	A iter(args, #) B
+	}
+
+is equiv. to
+
+iter: args, (params)->
+	{
+	A params B
+	}
+
+*/
+
+max[IN @ type](a @ IN, b @ IN) @ IN :
+	;<- if: a > b then: a else: b
+
+a @= max[int]` 3, 7.5.int
+
+MyC[par1 @ type, par2 @ int] @ class : 
+	{
+	}
+
+bla @ MyC[par1:int par2:2]
+
+// do functions have to be declared like this?
+// type in variable declarations defines the *interface* of 
+// the declared object, does *not* TIA side-effects
+// what about the "meta-interface"; from has to be a declaration
+// is this linkable?
+for (from() @, while @ ()->bool, step @ (), do @ ()) @ () :
+	{
+	{from} ->			// variables containing code have to 
+		{				// be prevented from executing
+		loop`
+			{
+			({do} ++ {step})()
+			if` ! while, 
+				;break
+			}
+		} ()
+	}
+
+// is &code equivalent to &variable?
+
+for` {i@:0}, {i<10}, {i++},
+	do: ;print i
+
+funa (a1 @ int, a2 @ float!, a3 @ bool) @ (int,int) =
+	{
+	if` a3,
+		{$.out: a1 + round(a2, a1)},		// out only returns from block
+	else:
+		{a2 += 3;; $.out: a1 .minmax floor a2}
+	}
+
+a @: 2
+b @: 5 * math.sin 2.3 + 10
+c @: 5 * math.sin(2.3 * math.pi) + 10
+(d, e) @: funa` 1.funb, ! a, a3:"bla"
+
+x @: 3 ._+ 5
+y @: _+: 3, 5
+
+sin {<- 3.5 * 7.2}		// should be valid
+
+f @ int
+f : if` a>0, {-> 3}, {-> 5}
+
+g @: if` a>0, 3, 5		// overloaded - how???
+						// overload on return type of 2nd/3rd arg?	
+						// maybe doesn't even need to overload
+
+typeof 3	// => int
+typeof {3}	// => ()->int
+
+i  @: 0i
+
+while` {i < 10},
+	{
+	print "blabla\n"
+	inc i
+	}
+
+Main @ scope :
+{
+
+Hello @ struct :
+	{
+	print @:
+		;print` "Hello " ++ "World!"
+	}
+	
+Hello2[ELEM @ type, ELEM2 @ printable] @ class : Hello &&
+	interface`		// nameless scopes don't need = (no name gets assigned) 
+	{
+	ELEM			// generic type
+	ELEM2			// concept
+	
+	print@()
+	} ++
+	{	// anonymous scopes have metatype of declaration
+		// here: class
+		// not allowed in: type
+		// i.e. type elements have to be fully specified
+	print &&=		// overload
+		{
+		each @ ClassWithElems[int]
+		
+		.Hello.print
+		
+		.elems.each` ;->el@;; el.print
+		}
+	
+	// overload with call operator
+	._call@ : print
+	.elems@ vec[ELEM]
+	}
+
+}	// end scope Main
+
+
+main@ int :
+	{
+	
+	}
+
+}

@@ -1,0 +1,12 @@
+
+target[CPP]
+{
+
+c_int : type = CPP "int"
+c_float : type = CPP "float"
+
+for (from:() ,, if:()=>bool,, step:()) : () =
+	{
+	}
+
+}
