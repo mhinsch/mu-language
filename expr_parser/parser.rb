@@ -38,7 +38,7 @@ class Node
 		end
 		puts (use_name ? @op.name : @op.string)
 
-		@args.reverse_each do |t|
+		@args.each do |t|
 			t.dump(l+1, use_name)
 		end
 	end
@@ -46,8 +46,8 @@ end
 
 # TODO nary operators (?)
 
-def error(txt)
-	$stderr.puts txt
+def error(line, txt)
+	$stderr.puts "line #{line}: #{txt}"
 	exit
 end
 
@@ -83,7 +83,7 @@ class Parser
 	def syntax(token)
 		s = @typeof[token.name]
 		if s == nil
-			error("#{token.name} has no defined syntax")
+			error(token.line, "#{token.name} has no defined syntax")
 		end
 		s
 	end
@@ -91,10 +91,10 @@ class Parser
 	def reduce_postfix(ops, terms, t)
 		if syntax(t).is_paren
 			if ops.empty?
-				error("missing opening parenthesis for #{t.string}")
+				error(t.line, "missing opening parenthesis for #{t.string}")
 			end
 			if !closed_by?(ops.last, t)
-				error("#{t.string} does not close #{ops.last.string}")
+				error(t.line, "#{t.string} does not close #{ops.last.string}")
 			end
 			ops.pop
 		end
@@ -109,17 +109,17 @@ class Parser
 			sl = syntax(ops.last)
 
 			if terms.size < sl.arity
-				error("reduce: op #{ops.last.string}: only #{terms.size} arguments found")
+				error(ops.last.line, "reduce: op #{ops.last.string}: only #{terms.size} arguments found")
 			end
 
-			print ">> o #{ops.last.string}"
+			print "#{ops.last.line} >> o #{ops.last.string}"
 			nterm = Node.new(ops.last)
-			(1..sl.arity).each do
-				a = terms.last
+			(1..sl.arity).reverse_each do |i|
+				a = terms[-i]
 				print ", #{a.string}"
 				nterm.add(a)
-				terms.pop
 			end
+			terms.pop(sl.arity)
 			puts
 			ops.pop
 			terms << nterm
@@ -160,7 +160,7 @@ class Parser
 					i += 1
 					next
 				else
-					error "operator at start of input"
+					error(t.line, "operator at start of input")
 				end
 			end
 
@@ -169,17 +169,17 @@ class Parser
 				# separators and parentheses are allowed to have no operand
 				# insert nops to make parsing simpler
 				if ((s_p.is_sep || s_p.is_paren) && (s.is_sep || s.is_paren)) # sep sep
-					t = Token.new("()", :nop, :term)
+					t = Token.new("()", :nop, :term, t.line)
 					s = syntax(t)
 					i -= 1
 				else
-					error("expecting new term after #{tokens[i-1].string}, got #{t.string}")
+					error(t.line, "expecting new term after #{tokens[i-1].string}, got #{t.string}")
 				end
 			end
 
 			# term term is its own operator
 			if s.bind_l < 0 && s_p.bind_r < 0
-				t = Token.new("'", :juxt, :op)
+				t = Token.new("'", :juxt, :op, t.line)
 				s = syntax(t)
 				i -= 1
 			end
@@ -203,10 +203,10 @@ class Parser
 
 			# par or prefix
 			if s.bind_r >= 0
-				puts "<< o #{t.string}"
+				puts "#{t.line} << o #{t.string}"
 				ops << t
 			else
-				puts "<< t #{t.string}"
+				puts "#{t.line} << t #{t.string}"
 				terms << t
 			end
 			i += 1

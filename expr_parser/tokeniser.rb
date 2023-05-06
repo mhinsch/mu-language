@@ -1,10 +1,11 @@
 
 class Token
-	attr_reader :string, :name, :typ
-	def initialize(s, n, t)
+	attr_reader :string, :name, :typ, :line
+	def initialize(s, n, t, l)
 		@string = s
 		@name = n
 		@typ = t
+		@line = l
 	end
 
 	def dump(l = 0, use_name=true)
@@ -24,6 +25,7 @@ class Tokeniser
 
 		@str = ""
 		@i = 0
+		@line = 0
 
 		@m = nil
 	end
@@ -68,14 +70,27 @@ class Tokeniser
 		end
 	end
 
+	def count_lines(str, from)
+		for i in from..@i
+			if str[i] == "\n"
+				@line += 1
+			end
+		end
+	end
+
 	def tokenise(str)
 		@str = str
 		@i = 0
+		@line = 0
+		i_last = 0
 		tokens = []
 		
 		eat_ws_nl_c()
 
 		while @i < @str.length
+			count_lines(str, i_last)
+			i_last = @i
+
 
 			matched = false
 			@whitespace.each do |ws|
@@ -84,14 +99,14 @@ class Tokeniser
 					break 
 				end
 			end
-
+			
 			if matched
 				next
 			end
 
 			@terms.each do |pat, name|
 				if with_match(pat) { |m|
-						tokens << Token.new(m, name, :term)
+						tokens << Token.new(m, name, :term, @line)
 						#puts tokens.last.name
 					}
 					matched = true
@@ -107,7 +122,7 @@ class Tokeniser
 				name = props[0]
 				eat_ws = props[1]
 				if with_match(pat) { |m|
-						tokens << Token.new(m, name, :op)
+						tokens << Token.new(m, name, :op, @line)
 						#puts tokens.last.name
 						if eat_ws
 							eat_ws_nl_c()
@@ -122,7 +137,7 @@ class Tokeniser
 				next
 			end
 
-			$stderr.puts("unknown syntax at: ", @str[i..-1])
+			$stderr.puts("unknown syntax at line #{@line}: ", @str[i..-1])
 			exit
 		end
 

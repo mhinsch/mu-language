@@ -36,9 +36,9 @@ puts
 prog = "{
 a = a + b + c - (3 + 5) ;; bla
 ;; comment 
-fst = 1 *
+fst = 1 * 
 	a b
-; ( , ) ;
+; ( x, y,z, (1, 2)) ;
 }"
 
 ts = ter.tokenise(prog)
@@ -49,7 +49,8 @@ end
 
 terms, _ = par.parse(ts)
 
-#terms[0].flatten
+terms[0].flatten_naries(Set[:tuple1, :tuple0])
+terms[0].remove_pars
 
 terms[0].dump(0, false)
 
