@@ -15,7 +15,7 @@ main: | args: Vec String =>
         println` argNum, suffix, "arg: ", arg
 		]
 
-	// ` wouldn't work since it binds lower than :
+	;; ` wouldn't work since it binds lower than :
 	tmp: 
 	do	[
 		// Uppercase, thus type

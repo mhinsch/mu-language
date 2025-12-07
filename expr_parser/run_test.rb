@@ -1,6 +1,10 @@
+require 'irb'
+
+
 require './parser.rb'
 require './config.rb'
 require './cleanup.rb'
+require './decl.rb'
 
 
 ter = Tokeniser.new
@@ -17,27 +21,34 @@ bla
 
 }")
 
-ts.each do |t|
+#ts.each do |t|
 	#print(t.name, "(#{t.string}) ")
-	print(t.name, " ")
-end
-puts
+#	print(t.name, " ")
+#end
+#puts
 
-terms, _ = par.parse(ts)
+#terms, _ = par.parse(ts)
 
-terms[0].dump
+#terms[0].dump
 
-
-
-puts
-puts
+#puts
+#puts
 
 
 prog = "{
+
+x : [test, test2]
+
+a : I
+b : 42
+c : 1
+
 a = a + b + c - (3 + 5) ;; bla
+
 ;; comment 
-fst = 1 * 
-	a b
+
+fst : 1 * 
+	a (b, c)
 ; ( x, y,z, (1, 2)) ;
 }"
 
@@ -49,8 +60,14 @@ end
 
 terms, _ = par.parse(ts)
 
-terms[0].flatten_naries(Set[:tuple1, :tuple0])
-terms[0].remove_pars
+ast = terms[0]
+ast.flatten_naries(Set[:tuple1, :tuple0])
+ast.remove_pars
 
-terms[0].dump(0, false)
+ast.check_scope(nil)
 
+ast.register_defs
+
+ast.dump(0, false)
+
+binding.irb

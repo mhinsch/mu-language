@@ -1,8 +1,6 @@
 Aims
 ----
 
-* unify data and function members
->	- make () optional everywhere
 * unify function calls and control structures, parsed in the same way, semantic
   analysis plugs in "built-in" stuff
 	!iterators vs. closures!!!

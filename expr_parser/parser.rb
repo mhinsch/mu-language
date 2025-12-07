@@ -1,12 +1,13 @@
 require './tokeniser.rb'
 
 class Syntax
-	attr_reader :bind_l, :bind_r, :is_paren, :is_sep
-	def initialize(bl, br, isp=false, is=false)
+	attr_reader :bind_l, :bind_r, :is_paren, :is_sep, :is_term
+	def initialize(bl, br, is_paren: false, is_sep: false, is_term: false)
 		@bind_l = bl
 		@bind_r = br
-		@is_paren = isp
-		@is_sep = is
+		@is_paren = is_paren
+		@is_sep = is_sep
+		@is_term = is_term
 	end
 
 	def arity
@@ -17,11 +18,20 @@ end
 
 
 class Node
-	attr_reader :op, :args
+	attr_reader :op,	# parser Token
+		:args			# child Node objects
 
 	def initialize(o)
 		@op = o
 		@args = []
+	end
+
+	def copy
+		nnode = Node.new(@op)
+		@args.each do |arg|
+			nnode.add(arg.copy)
+		end
+		nnode
 	end
 
 	def add(t1, *t)
@@ -32,11 +42,27 @@ class Node
 		@op.string + "(" + @args.size.to_s + ")"
 	end
 
+	def symbol
+		@op.string.to_sym
+	end
+
+	def visit(oper, &transform)
+		if @op.name == oper
+			transform.call(self)
+		end
+
+		@args.each do |arg|
+			arg.visit(oper, &transform)
+		end
+	end
+
+
 	def dump(l=0, use_name=true)
 		l.times do
 			print "  "
 		end
-		puts (use_name ? @op.name : @op.string)
+		#puts (use_name ? @op.name : @op.string)
+		puts "#{self.class.name} #{@op.name}, #{@op.typ} (\"#{@op.string}\"): #{@args.size}"
 
 		@args.each do |t|
 			t.dump(l+1, use_name)
@@ -59,37 +85,37 @@ class Parser
 
 	# TODO expose associativity
 	def infix(name, bind, is_sep=false)
-		@typeof[name] = Syntax.new(bind-1, bind, false, is_sep)
+		@typeof[name] = Syntax.new(bind-1, bind, is_sep: is_sep)
 	end
 
 	def postfix(name, bind)
-		@typeof[name] = Syntax.new(bind, -1, false, false)
+		@typeof[name] = Syntax.new(bind, -1)
 	end
 
 	def prefix(name, bind)
-		@typeof[name] = Syntax.new(-1, bind, false, false)
+		@typeof[name] = Syntax.new(-1, bind)
 	end
 
 	def parens(left, right)
 		@closes[left] = right
-		@typeof[left] = Syntax.new(-1, 0, true)
-		@typeof[right] = Syntax.new(1, -1, true)
+		@typeof[left] = Syntax.new(-1, 0, is_paren: true)
+		@typeof[right] = Syntax.new(1, -1, is_paren: true)
 	end
 
 	def term(name)
-		@typeof[name] = Syntax.new(-1, -1)
+		@typeof[name] = Syntax.new(-1, -1, is_term: true)
 	end
 
-	def syntax(token)
+	def get_syntax(token)
 		s = @typeof[token.name]
 		if s == nil
-			error(token.line, "#{token.name} has no defined syntax")
+			error(token.line, "#{token.name} has no defined get_syntax")
 		end
 		s
 	end
 
 	def reduce_postfix(ops, terms, t)
-		if syntax(t).is_paren
+		if get_syntax(t).is_paren
 			if ops.empty?
 				error(t.line, "missing opening parenthesis for #{t.string}")
 			end
@@ -98,31 +124,31 @@ class Parser
 			end
 			ops.pop
 		end
-		nterm = Node.new(t)
-		nterm.add(terms.last)
+		new_term = Node.new(t)
+		new_term.add(terms.last)
 		terms.pop
-		terms << nterm
+		terms << new_term
 	end
 
 	def reduce(ops, terms, b)
-		while !ops.empty? && b <= syntax(ops.last).bind_r
-			sl = syntax(ops.last)
+		while !ops.empty? && b <= get_syntax(ops.last).bind_r
+			sl = get_syntax(ops.last)
 
 			if terms.size < sl.arity
 				error(ops.last.line, "reduce: op #{ops.last.string}: only #{terms.size} arguments found")
 			end
 
 			print "#{ops.last.line} >> o #{ops.last.string}"
-			nterm = Node.new(ops.last)
+			new_term = Node.new(ops.last)
 			(1..sl.arity).reverse_each do |i|
 				a = terms[-i]
 				print ", #{a.string}"
-				nterm.add(a)
+				new_term.add(a)
 			end
 			terms.pop(sl.arity)
 			puts
 			ops.pop
-			terms << nterm
+			terms << new_term
 		end
 	end
 
@@ -137,77 +163,79 @@ class Parser
 		i = 0
 
 		p = -1
-		t = nil
+		token = nil
 		need_arg = true
 		open_op = nil
 
 		while i < tokens.length do
-			t_p = t
-			s_p = t_p ? syntax(t_p) : nil
-			t = tokens[i]
-			s = syntax(t)
+			token_prev = token
+			syntax_prev = token_prev ? get_syntax(token_prev) : nil
+			token = tokens[i]
+			syntax = get_syntax(token)
 
 			# only terms or open parentheses allowed at beginning of input
-			if t_p == nil
-				if s.bind_l < 0
-					if s.is_paren
-						puts "<< o #{t.string}"
-						ops << t
+			if token_prev == nil
+				if syntax.bind_l < 0
+					if syntax.is_paren
+						puts "<< o #{token.string}"
+						ops << token
 					else
-						puts "<< t #{t.string}"
-						terms << t
+						puts "<< token #{token.string}"
+						terms << token
 					end
 					i += 1
 					next
 				else
-					error(t.line, "operator at start of input")
+					error(token.line, "operator at start of input")
 				end
 			end
 
 			# op op 
-			if s.bind_l >= 0 && s_p.bind_r >= 0
+			if syntax.bind_l >= 0 && syntax_prev.bind_r >= 0
 				# separators and parentheses are allowed to have no operand
 				# insert nops to make parsing simpler
-				if ((s_p.is_sep || s_p.is_paren) && (s.is_sep || s.is_paren)) # sep sep
-					t = Token.new("()", :nop, :term, t.line)
-					s = syntax(t)
+				if ((syntax_prev.is_sep || syntax_prev.is_paren) &&
+						(syntax.is_sep || syntax.is_paren)) # sep sep
+					token = Token.new("()", :nop, :term, token.line)
+					syntax = get_syntax(token)
 					i -= 1
 				else
-					error(t.line, "expecting new term after #{tokens[i-1].string}, got #{t.string}")
+					error(token.line,
+						"expecting new term after #{tokens[i-1].string}, got #{token.string}")
 				end
 			end
 
 			# term term is its own operator
-			if s.bind_l < 0 && s_p.bind_r < 0
-				t = Token.new("'", :juxt, :op, t.line)
-				s = syntax(t)
+			if syntax.bind_l < 0 && syntax_prev.bind_r < 0
+				token = Token.new("'", :juxt, :op, token.line)
+				syntax = get_syntax(token)
 				i -= 1
 			end
 
 			# term op
-			if s.bind_l >= 0
-				if !ops.empty? && s.bind_l < syntax(ops.last).bind_r
-					reduce(ops, terms, s.bind_l)
+			if syntax.bind_l >= 0
+				if !ops.empty? && syntax.bind_l < get_syntax(ops.last).bind_r
+					reduce(ops, terms, syntax.bind_l)
 				end
 
-				# at this point everything binding stronger than s has been reduced
+				# at this point everything binding stronger than syntax has been reduced
 				# to a single term
 				
 				# postfix operator or closing parentheses
-				if s.bind_r < 0
-					reduce_postfix(ops, terms, t)
+				if syntax.bind_r < 0
+					reduce_postfix(ops, terms, token)
 					i += 1
 					next
 				end
 			end
 
 			# par or prefix
-			if s.bind_r >= 0
-				puts "#{t.line} << o #{t.string}"
-				ops << t
+			if syntax.bind_r >= 0
+				puts "#{token.line} << o #{token.string}"
+				ops << token
 			else
-				puts "#{t.line} << t #{t.string}"
-				terms << t
+				puts "#{token.line} << token #{token.string}"
+				terms << (syntax.is_term ? Node.new(token) : token)
 			end
 			i += 1
 		end

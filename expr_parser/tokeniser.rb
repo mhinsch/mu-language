@@ -1,6 +1,10 @@
 
 class Token
-	attr_reader :string, :name, :typ, :line
+	attr_accessor :string,	# raw string content
+		:name,				# semantic name
+		:typ,				# :op or :term
+		:line				# source line
+	
 	def initialize(s, n, t, l)
 		@string = s
 		@name = n
@@ -137,7 +141,7 @@ class Tokeniser
 				next
 			end
 
-			$stderr.puts("unknown syntax at line #{@line}: ", @str[i..-1])
+			$stderr.puts("unknown syntax at line #{@line}: ", @str[@i..-1])
 			exit
 		end
 

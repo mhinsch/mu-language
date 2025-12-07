@@ -1,51 +1,47 @@
-// & means guaranteed not to be a copy
+;; Ref means guaranteed not to be a copy
 
-// a needs to be a ref so that identity can be compared
-a_scan : [m : ! Model, a : &! Animal] ^
+;; a needs to be a ref so that identity can be compared
+a_scan: |(model: Model!, animal: Ref Animal!) =>
 	{
-	found : (Pos, bool) m.food.findResource(a.pos, m.p.foodVisibility)
+	found: (Pos, Bool) find_resource(model.food, animal.pos, m.p.food_visibility)
 	
 	if` found._1,
 		[
-		rawDest : Pos a.dest(m.width)
-		a.doDisperse
-		m.movement` a!, rawDest, [Model::endMove]
-		^
+		raw_dest: Pos wrap(animal.dest, model.width)
+		animal `` disperse 
+		movement` model, animal!, raw_dest, [Model.end_move]
+		^ ()
 		]
 
-	// shouldn't that be &!, so that refs can be redirected 
-	// (e.g. while resizing the array)?
-	// or build handling of refs into special type of array? 
-	// (but would extend to every container...)
-	neighbours : vec[&! Animal, Pos]
-	m.collectNeighbours` a.pos, m.p.visibility, neighbours!
-	neighbours.shuffle` rng
+	;; shouldn't that be &!, so that refs can be redirected 
+	;; (e.g. while resizing the array)?
+	;; or build handling of refs into special type of array? 
+	;; (but would extend to every container...)
+	neighbours: Vec (Ref Animal!, Pos)
+	collect_neighbours` model, animal.pos, model.p.visibility, neighbours!
+	shuffle` neighbours, rng
 	
-	neighbours!.each` 
-		[ (na, np) :: (&! Animal, Pos)
-		
-		if na === a, \next
+	each` neighbours, |(na: Ref Animal!, np: Pos) =>
+		[ 
+		if na === animal, [next ()]
 
-		state : int na.state
+		state: Int na.state
 
-		if` state =\= Animal.st_run &&
-			state =\= Animal.st_disperse &&
-			state =\= Animal.st_fight &&
-			a.engage,
+		if` state <>. (Animal.st_run, Animal.st_disperse, Animal.st_fight) &&
+			animal.engage,
 			[
-			// NL replaces , between ()
-			// would that work?
-			if ( m.resolveEncounter(a!, na!, np)
-				\^
+			if` resolve_encounter(model, animal!, na!, np),
+				[^ ()],
 			else:
 				[
-				a.doScan; m.schedule(a!, [Model::a_scan], m.p.peaceTime)
-				^
-				] )
+				scan animal
+				schedule` model, a!, Model.a_scan, model.p.peace_time
+				^ ()
+				]
 			]
 		]
 		
-	a.doMove
-	p.movement` a!, found, \Model::a_arriveAtResource
+	move animal
+	movement` model, animal!, found, Model.a_arrive_at_resource
 	}
 

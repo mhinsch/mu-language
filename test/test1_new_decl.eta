@@ -1,18 +1,28 @@
 {
 
-;; : binds a name in the next surrounding scope, i.e. {} or []
+;; : binds a name in the next surrounding scope
+;; a scope in this case is:
+;; - {}, []
+;; - function call
 
 ;; constant
 a: 3
 
+;; the type of the new variable is the type of the RHS expression
 ;; explicit type, init
 f: Float 1.7
 ;; same, plus new type declaration
-;; does that (new type) actually work according to scoping rules?
+;; should not work as scope is limited to ()?
+;; RHS of :: is symbolic anyway, so...
 f2: (MyFloat: Float) 1.7
-;; maybe we need to make explicit that binding is "global"?
-;; generally two binding operators, one for tuple components, one for global?
-f2: (MyFloat:: Float) 1.7
+
+;; would be good though, so that generics could be declared as:
+
+fun: (x: (T: Type))
+
+;; if so, what about this:
+
+x: MyT: Type (a: Int, b: Float)
 
 ;; default init
 ;; without semantic capitalization we would need Int()
@@ -21,6 +31,9 @@ d: Int
 ;; those should be (structurally) equivalent:
 t1: (Int, Int) (1, 1)
 t2: (1, 1)
+
+
+
 t3: (a: Int, b: Int)			;; <--- we need this for function calls 
 								;; (e.g. if` then: else:)
 
