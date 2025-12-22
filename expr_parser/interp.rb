@@ -1,12 +1,16 @@
+require './inter_node'
+require './repl_macro'
+
+
 class InterpOp
-	attr_reader :evaluate
+	attr_reader :eval_fn
 
 	def initialize(run)
-		@evaluate = run
+		@eval_fn = run
 	end
 
 	def evaluate(node, args)
-		@evaluate.call(node, args)
+		@eval_fn.call(node, args)
 	end
 end
 
@@ -40,8 +44,8 @@ class IScope
 		@scopes[kind][name] = val
 	end
 	
-	def is_open?
-		@node.op.name == :rocode
+	def open?
+		@node.node_type == :rocode
 	end
 end
 
@@ -55,14 +59,14 @@ class IStack
 	
 	def dump
 		@scopes.reverse_each do |scope|
-			puts scope.node == nil ? "((" : (scope.is_open? ? "[" : "{")
+			puts scope.node == nil ? "((" : (scope.open? ? "[" : "{")
 			puts "VAR"
 			puts scope.scopes[VAR]
 			puts "OP"
 			puts scope.scopes[OP]
 			puts "TYPE"
 			puts scope.scopes[TYPE]
-			puts scope.node == nil ? "))" : (scope.is_open? ? "]" : "}")
+			puts scope.node == nil ? "))" : (scope.open? ? "]" : "}")
 		end
 	end
 
@@ -75,7 +79,7 @@ class IStack
 				end
 				return scope.name(name, kind)
 			end
-			if ! scope.is_open?
+			if ! scope.open?
 				break
 			end
 		end
@@ -118,7 +122,7 @@ class IStack
 	end
 
 	def add_macro(vname, val)
-		puts "adding macro #{val.symbol}"
+		puts "adding macro #{vname}"
 		@scopes.last.add_name(vname, val, MACRO)
 	end
 	
@@ -189,7 +193,6 @@ class IType
 end
 
 
-
 class Interpreter
 	attr_reader :stack
 
@@ -243,13 +246,13 @@ class Interpreter
 	# add a simple builtin type with a constant constructor
 	def add_s_type(tname, default)
 		tp = IType.new(tname, default, [])
-		add_op(tname, lambda{|node, args| self.default_constructor(node.op.name)})
+		add_op(tname, lambda{|node, args| self.default_constructor(node.node_type)})
 		add_type(tname, tp)
 	end
 
 	def eval_as_tuple_type(members)
 		members.each do |m|
-			if m.op.name != :def
+			if m.node_type != :def
 				puts "member definition expected"
 				exit
 			end
@@ -267,7 +270,7 @@ class Interpreter
 		val = args[1]
 		lhs = args[0].args[0]
 		str = lhs.symbol
-		idname = lhs.op.name
+		idname = lhs.node_type
 
 		if idname == :tidentifier
 			type_def(str, val)
@@ -278,14 +281,43 @@ class Interpreter
 		val
 	end
 
-	def define_macro(node, args)
-		# mdef->quote->call->op
-		str = args[0].args[0].args[0].op.name
-		add_macro(str, args[1].args[0])
+
+	def define_macro(_node, args)
+		if args.length != 2
+			error("defmacro needs two arguments")
+		end
+
+		pattern = args[0].unquote
+		replacement = args[1].unquote
+
+		# don't think that's necessary
+		# pattern.fncall? || error("pattern must be a fn call")
+		macro = ReplMacro.new(pattern, replacement)
+		
+		if (m = lookup_macro(macro.name)) == nil
+			add_macro(macro.name, [macro])
+		else
+			m << macro
+		end
 
 		return nil
 	end
 		
+	
+	def apply_macro(args, macros)
+
+		puts "macro - trying to match: "
+		args.dump
+		
+		macros.each do |m|
+			mt = m.match(args)
+			if mt != nil
+				return m.replace(mt)
+			end
+		end
+		puts "macro not found"
+		nil
+	end
 
 	# TODO
 	# compound types
@@ -293,8 +325,8 @@ class Interpreter
 	#   = function type -> type
 	
 	def type_def(name, impl)
-		if impl.op.name == :rccode 
-			if impl.args[0].op.name != :tuple1
+		if impl.node_type == :rccode 
+			if impl.args[0].node_type != :tuple1
 				puts "expected list of definitions"
 				exit
 			end
@@ -304,45 +336,30 @@ class Interpreter
 			constructors.each do |c|
 				add_op(name, c)
 			end	
-		elsif impl.op.name == :type
+		elsif impl.node_type == :type
 			t_obj = impl
 		end
 		
 		@stack.add_type(name, t_obj)
 	end
 		
+	def assign(node, args)
+		lhside = args[0].unquote
+		val = args[1]
 
-	# replace $0... in node with args[...]
-	def insert_args(node, args)
-		if node.op.name == :sidentifier && (m = node.symbol.match(/\$([0-9]+)/))
-			puts "found macro arg #{node.symbol}!"
-			idx = m[1].to_i
-			return args[idx]
+		if lhside.node_type != :identifier
+			puts "lvalue required"
+			exit
 		end
 
-		node.args.each_index do |i|
-			node.args[i] = insert_args(node.args[i], args)
-		end
-
-		node	
-	end
-	
-	
-	def apply_macro(node, template)
-		args = node.args
-
-		new_node = template.copy
-		puts "applying macro!"
-		node.dump(0, true)
-		puts "===>"
-		insert_args(new_node, args)
-		new_node.dump(0, true)
-		new_node
+		vname = lhside.symbol
+		set_value(vname, val)
+		return val
 	end
 		
 	
 	def evaluate_quote(node, args = [])
-		if node.op.name != :rccode && node.op.name != :rocode
+		if node.node_type != :rccode && node.node_type != :rocode
 			puts "not a quote"
 			exit
 		end
@@ -360,70 +377,56 @@ class Interpreter
 	
 
 	def evaluate(node, resolve_macros=true)
-		name = node.op.name
+		ntype = node.node_type
 		symbol = node.symbol
-		puts "\t## #{name}, #{symbol}"
+		puts "\t## #{ntype}, #{symbol}"
 
 		# variables
-		if name == :identifier
-			vname = symbol
-			return lookup_var(vname)
+		if ntype == :identifier
+			var_name = symbol
+			return lookup_var(var_name)
 		end
 
 		# types
-		if name == :tidentifier
-			tname = symbol
-			return lookup_type(tname)
+		if ntype == :tidentifier
+			type_name = symbol
+			return lookup_type(type_name)
 		end
 
 		# code
-		if name == :rocode || name == :rccode
+		if ntype == :rocode || ntype == :rccode
 			return node
 		end
 
-		# =
-		if name == :assign
-			lhside = node.args[0]
-			if lhside.op.name != :identifier
-				puts "lvalue required"
-				exit
-			end
-
-			vname = lhside.symbol
-			val = evaluate(node.args[1])
-			set_value(vname, val)
-			return val
-		end
-
 		# literals
-		if node.op.typ == :term
-			op = lookup_op(node.op.name)
+		if node.token.typ == :term
+			op = lookup_op(node.node_type)
 			return op.evaluate(node, [])
 		end
 
 		# everything else is operators or function calls
-		if name == :call
-			op_args = node.args[1..-1]
+		if ntype == :call
+			op_args = node.call_args
+			oper = node.call_oper
 			# function
-			if node.args[0].op.name == :identifier || node.args[0].op.name == :sidentifier
-				op_name = node.args[0].symbol
-			# operator
+			if oper.node_type == :identifier || oper.node_type == :sidentifier
+				op_name = oper.symbol
+			# builtin operator
 			else
-				op_name = node.args[0].op.name
+				op_name = oper.node_type
 			end
 
 			puts "calling #{op_name}"
-			# operator, token generated in standardise_calls
-			#else
-			#	op_name = node.args[0].name
-			#end
 			
-			if resolve_macros && (template = lookup_macro(op_name))
+			if (macros = lookup_macro(oper.symbol))
 				puts "found macro #{symbol}:"
-				template.dump(0, true)
 				puts "----"
-				repl_node = apply_macro(node, template)
-				return evaluate(repl_node)
+				repl_node = apply_macro(node, macros)
+				if repl_node == nil
+					puts(node.token.line, "no match found for macro #{op_name}")
+				else
+					return evaluate(repl_node)
+				end
 			end
 			op = lookup_op(op_name)
 			op_args.map!{|arg| evaluate(arg)}
@@ -431,7 +434,7 @@ class Interpreter
 			return op.evaluate(node, op_args)
 		end
 
-		error(node.op.line, "unknown node #{name}")
+		error(node.token.line, "unknown node #{ntype}")
 	end
 
 end
@@ -446,7 +449,7 @@ end
 # name :: [args, ...] => [body]
 def function(fn_decl)
 	arg_decl = fn_decl.args[0]
-	if arg_decl.op.name != :rccode
+	if arg_decl.node_type != :rccode
 		puts "fn decl requires arg block"
 		exit
 	end
@@ -454,9 +457,9 @@ def function(fn_decl)
 	args = arg_decl.args
 	if args.size == 0
 		arg_list = []
-	elsif args.size == 1 && args[0].op.name == :identifier
+	elsif args.size == 1 && args[0].node_type == :identifier
 		arg_list = [args[0]]
-	elsif args.size == 1 && args[0].op.name == :tuple1
+	elsif args.size == 1 && args[0].node_type == :tuple1
 		arg_list = args[0].args
 	else
 		puts "malformed arg list"
@@ -464,7 +467,7 @@ def function(fn_decl)
 	end
 	
 	fn_body = fn_decl.args[1]
-	if fn_body.op.name != :rccode
+	if fn_body.node_type != :rccode
 		puts "fn decl requires c-code block"
 		exit
 	end
@@ -495,15 +498,14 @@ def config_interp(int)
 	int.add_s_type :F, 0.0
 	int.add_s_type :S, ""
 	
-	int.add_op :$defvar, lambda{|node, args|
-		int.define(node, args) }
-	int.add_op :defmacro, lambda{|node, args|
-		int.define_macro(node, args) }
+	int.add_op :$defvar, lambda{ |node, args| int.define(node, args) }
+	int.add_op :defmacro, lambda{ |node, args| int.define_macro(node, args) }
+	int.add_op :$assign, lambda{ |node, args| int.assign(node, args) }
 	
 	int.add_op :nop, lambda{|node, args| nil}
 
-	int.add_op :integer, lambda{|node, args| node.op.string.to_i}
-	int.add_op :string, lambda{|node, args| node.op.string}
+	int.add_op :integer, lambda{|node, args| node.token.string.to_i}
+	int.add_op :string, lambda{|node, args| node.token.string}
 
 	int.add_op :tuple1, lambda{|node, args| [*args]}
 	

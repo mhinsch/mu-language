@@ -18,16 +18,16 @@ end
 
 
 class Node
-	attr_reader :op,	# parser Token
+	attr_reader :token,	# parser Token
 		:args			# child Node objects
 
-	def initialize(o)
-		@op = o
+	def initialize(op_token)
+		@token = op_token
 		@args = []
 	end
 
 	def copy
-		nnode = Node.new(@op)
+		nnode = Node.new(@token)
 		@args.each do |arg|
 			nnode.add(arg.copy)
 		end
@@ -39,15 +39,15 @@ class Node
 	end
 
 	def string
-		@op.string + "(" + @args.size.to_s + ")"
+		@token.string + "(" + @args.size.to_s + ")"
 	end
 
 	def symbol
-		@op.string.to_sym
+		@token.string.to_sym
 	end
 
 	def visit(oper, &transform)
-		if @op.name == oper
+		if @token.name == oper
 			transform.call(self)
 		end
 
@@ -57,15 +57,15 @@ class Node
 	end
 
 
-	def dump(l=0, use_name=true)
-		l.times do
+	def dump(indent=0, use_name=true)
+		indent.times do
 			print "  "
 		end
 		#puts (use_name ? @op.name : @op.string)
-		puts "#{self.class.name} #{@op.name}, #{@op.typ} (\"#{@op.string}\"): #{@args.size}"
+		puts "#{self.class.name} #{@token.name}, #{@token.typ} (\"#{@token.string}\"): #{@args.size}"
 
 		@args.each do |t|
-			t.dump(l+1, use_name)
+			t.dump(indent+1, use_name)
 		end
 	end
 end
@@ -162,11 +162,7 @@ class Parser
 
 		i = 0
 
-		p = -1
 		token = nil
-		need_arg = true
-		open_op = nil
-
 		while i < tokens.length do
 			token_prev = token
 			syntax_prev = token_prev ? get_syntax(token_prev) : nil

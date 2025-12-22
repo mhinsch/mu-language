@@ -2,6 +2,14 @@ require 'set'
 
 
 class Node
+	def node_type
+		@token.name
+	end
+
+	def set_node_type(typ)
+		@token.name = typ
+	end
+	
 	def flatten_naries(naries)
 		@args.each do |t|
 			if t.class == Node
@@ -10,11 +18,11 @@ class Node
 		end
 
 		# sequences of naries go together
-		if naries.member?(@op.name)
-			puts "flattening #{@op.name}"
+		if naries.member?(node_type)
+			puts "flattening #{node_type}"
 			args = []
 			@args.each do |a|
-				if a.class == Node && a.op.name == @op.name
+				if a.class == Node && a.node_type == node_type
 					args.concat(a.args)
 				else
 					args << a
@@ -31,29 +39,29 @@ class Node
 			end
 		end
 
-		if @op.name == :rccode || @op.name == :rocode 
+		if node_type == :rccode || node_type == :rocode 
 			if @args.size != 1
-				error(@op.line, "too many args")
+				error(@token.line, "too many args")
 			end
 			# we don't need to keep top-level tuples in code blocks
-			if @args[0].op.name == :tuple0 || @args[0].op.name == :tuple
+			if @args[0].token.name == :tuple0 || @args[0].token.name == :tuple
 				@args = @args[0].args
 			end
 		end
 
 		# after flattening tuples we don't need to keep these around
-		if @op.name == :rpar
+		if node_type == :rpar
 			if @args.size != 1
-				error(@op.line, "too many args")
+				error(@token.line, "too many args")
 			end
 
-			@op = @args[0].op
+			@token = @args[0].token
 			@args = @args[0].args
 		end
 	end
 
 	def remove_nops(nop)
-		@args.delete_if{|arg| arg.op.name == nop}
+		@args.delete_if{|arg| arg.token.name == nop}
 		@args.each{|arg| arg.remove_nops(nop)}
 	end
 
@@ -65,13 +73,13 @@ class Node
 			arg.fun_arg_tuples
 		end
 
-		if @op.name == :juxt || @op.name == :call
+		if node_type == :juxt || node_type == :call
 			if @args.length != 2
-				puts "line #{@op.line}: too many or too few args, I think: #{@args}"
+				puts "line #{@token.line}: too many or too few args, I think: #{@args}"
 				exit
 			end
 
-			if @args[1].op.name == :tuple1
+			if @args[1].token.name == :tuple1
 				@args = [ @args[0], *@args[1].args]
 			end
 		end
@@ -85,13 +93,13 @@ class Node
 			arg.standardise_op_calls(ops)
 		end
 		
-		if ops.include?(@op.name)
-			@args.insert(0, Node.new(@op))
-			@op = Token.new("'", :call, :op, nil)
+		if ops.include?(node_type)
+			@args.insert(0, Node.new(@token))
+			@token = Token.new("'", :call, :op, nil)
 		end
 
-		if @op.name == :juxt
-			@op.name = :call
+		if node_type == :juxt
+			set_node_type(:call)
 		end
 	end
 end

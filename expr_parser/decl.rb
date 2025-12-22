@@ -26,13 +26,13 @@ class Node
 	def check_scope(parent)
 		#puts "scope: " + @op.name.to_s + " " + parent.class.name
 		# scope of [ is linked to parent
-		if @op.name == :rocode
+		if @token.name == :rocode
 			@scope = Scope.new(parent)
 		# scope of { has no parent
-		elsif @op.name == :rccode
+		elsif @token.name == :rccode
 			@scope = Scope.new(nil)
 		# regular tuples create their own open scope
-		elsif @op.name == :tuple1
+		elsif @token.name == :tuple1
 			@scope = Scope.new(parent)
 		else
 			@scope = parent

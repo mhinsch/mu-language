@@ -5,15 +5,15 @@ class Token
 		:typ,				# :op or :term
 		:line				# source line
 	
-	def initialize(s, n, t, l)
+	def initialize(s, n, t, indent)
 		@string = s
 		@name = n
 		@typ = t
-		@line = l
+		@line = indent
 	end
 
-	def dump(l = 0, use_name=true)
-		l.times do
+	def dump(indent = 0, use_name=true)
+		indent.times do
 			print "  "
 		end
 		puts (use_name ? @name : @string)

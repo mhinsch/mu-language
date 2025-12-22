@@ -9,14 +9,20 @@
 ;; similar syntax.
 
 
+;;[f args : block ] :=> [ $defvar' \f, [ \args : $0 ] => \block ]
+[$fn $args_ : $block ] :=> [ $defvar' \$fn, [ $0 : \$args ] => \$block ]
 
-[() : ()] :=> [$defvar' [ $1 ], $2] 
+[$var : $val] :=> [$defvar' [ \$var ], \$val] 
+
+[$lhs = $rhs] :=> [$assign' [ \$lhs ], \$rhs]
 
 a : 1+5
 
 b : (1, 2, 3)
 
-c : b#1
+c : 0
+
+c = b#1
 
 log :
 	{	

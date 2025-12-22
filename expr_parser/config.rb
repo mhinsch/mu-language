@@ -4,7 +4,7 @@ def config_tokeniser(ter)
 
 	ter.term /\G[a-z][a-zA-Z0-9_]*/, :identifier
 	ter.term /\G[A-Z][a-zA-Z0-9_]*/, :tidentifier
-	ter.term /\G\$[a-zA-Z0-9_]*/, :sidentifier
+	ter.term /\G\$[a-zA-Z0-9_]+/, :sidentifier
 	ter.term /\G-?[0-9]+/, :integer
 	ter.term /\G"[^"]*"/, :string
 
@@ -28,7 +28,7 @@ def config_tokeniser(ter)
 	ter.op "/", :divide, true
 	ter.op "^", :power, true
 	ter.op "#", :index, true
-	ter.op "%", :insert, false
+	ter.op "\\", :insert, false
 	ter.op "(", :lpar, true
 	ter.op ")", :rpar, false
 	ter.op "[", :locode, true
