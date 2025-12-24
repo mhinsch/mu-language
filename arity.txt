@@ -1,9 +1,0 @@
-f[T] (a @ T) @ ()
-
-f[int] ->
-
-f (a @ int) @ ()
-
-f[int, float] ->
-
-f (a @ (int, float) ) @ ()
