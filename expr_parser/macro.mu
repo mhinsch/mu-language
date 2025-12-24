@@ -9,8 +9,11 @@
 ;; similar syntax.
 
 
-;;[f args : block ] :=> [ $defvar' \f, [ \args : $0 ] => \block ]
-[$fn $args_ : $block ] :=> [ $defvar' \$fn, [ $0 : \$args ] => \$block ]
+;; maybe like this, so we can keep type info in args?
+;;[$fn $args_ : $block ] :=> [ $deffun' [\$fn], [ \$args_ ], \$block ]
+
+;; strictly plain functions, no overloading etc.
+[$fn $args_ : $block ] :=> [ $defvar' [\$fn], [ \$args_ : $0 ] => \$block ]
 
 [$var : $val] :=> [$defvar' [ \$var ], \$val] 
 

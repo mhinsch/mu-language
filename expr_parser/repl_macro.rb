@@ -39,24 +39,29 @@ class ReplMacro
 		pargs = pattern.args
 		nargs = node.args
 
+		# no args, done
 		if pargs.size == 0 && nargs.size == 0
 			return {}
 		end
 
+		# check if the op is the same
 		m = matches?(pargs[0], nargs[0])
 		if !m
 			return nil
 		end
 
+		# check args
 		(1..pargs.size-1).each do |i|
 			if i >= nargs.size
 				puts "not enough arguments"
 				return nil
 			end
 			arg = pargs[i]
-			# $name_ matches the rest of the arguments
+			# $name_ collects the rest of the arguments in a tuple
 			if arg.node_type == :sidentifier && arg.symbol[-1] == '_'
-				m[arg.symbol] = nargs[i:-1]
+				nnode = Node.create_call(",", :tuple)
+				nnode.args.concat(nargs[i:-1])
+				m[arg.symbol] = nnode
 				return m
 			end
 
@@ -83,7 +88,6 @@ class ReplMacro
 		matches?(@pattern, node)
 	end
 
-	# replace $0... in node with args[...]
 	def replace(matches, node = @template.copy)
 		if node.node_type == :insert
 			var = node.args[0]
@@ -99,8 +103,15 @@ class ReplMacro
 			return repl
 		end
 
-		node.args.each_index do |i|
-			node.args[i] = replace(matches, node.args[i])
+		(node.args.size - 1).downto(0) do |i|
+			repl = replace(matches, node.args[i])
+			if repl.is_a?(Node)
+				node.args[i] = repl
+			else
+				repl.is_a?(Array) || error("replacement has to be Array or Node")
+				node.args.delete_at(i)
+				node.args.insert(i, *repl)
+			end
 		end
 
 		node	
