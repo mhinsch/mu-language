@@ -9,11 +9,16 @@
 ;; similar syntax.
 
 
+$replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
+
+
 ;; maybe like this, so we can keep type info in args?
 ;;[$fn $args_ : $block ] :=> [ $deffun' [\$fn], [ \$args_ ], \$block ]
 
 ;; strictly plain functions, no overloading etc.
-[$fn $args_ : $block ] :=> [ $defvar' [\$fn], [ \$args_ : $0 ] => \$block ]
+;; we special-case the definition for now
+[$fn $arg : $block] :=> [ $defsfun' [\$fn], { \$arg : $0 } => \$block ]
+[$fn $args_ : $block] :=> [ $defsfun' [\$fn], { \$args_ : $0 } => \$block ]
 
 [$var : $val] :=> [$defvar' [ \$var ], \$val] 
 
@@ -27,15 +32,15 @@ c : 0
 
 c = b#1
 
-log :
+log x :
 	{	
-	;;println $0
+	println $0
 	}
 
 2+a*3
 
 if' a==6,
-	[ println "bla" ],
+	[ log "bla" ],
 	[ println 111 ]
 
 i : 1

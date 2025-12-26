@@ -37,9 +37,10 @@ class Node
 		@args[0]
 	end
 
-	def self.create_call(str, typ, kind=:op)
+	def self.create_call(str, typ, kind=:op, args=[])
 		cal = Node.new(Token.new("'", :call, :op, nil))
 		cal.args << Node.new(Token.new(str, typ, kind, nil))
+		cal.args[0].args.concat(args)
 		cal
 	end
 end

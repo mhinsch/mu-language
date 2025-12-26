@@ -33,7 +33,7 @@ ast.remove_pars
 #ast.dump(0, true)
 ast.fun_arg_tuples
 ast.standardise_op_calls(Set[:plus, :minus, :times, :divide, :power, :def, :tuple1, :index,
-	:isequal, :isless, :defmacro, :assign])
+	:isequal, :isless, :defmacro, :assign, :arrow])
 
 #ast.check_scope(nil)
 
