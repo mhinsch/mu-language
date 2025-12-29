@@ -34,16 +34,15 @@ ast.remove_pars
 ast.fun_arg_tuples
 ast.standardise_op_calls(Set[:plus, :minus, :times, :divide, :power, :def, :tuple1, :index,
 	:isequal, :isless, :defmacro, :assign, :arrow])
-
-#ast.check_scope(nil)
+ast.assign_scope(nil)
 
 #ast.register_defs
 
 ast.dump(0, true)
 
-int = Interpreter.new
+int = Interpreter.new(ast)
 config_interp(int)
-puts int.evaluate_quote(ast)
+puts int.run
 
 #ast.dump(0, true)
 

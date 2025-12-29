@@ -9,8 +9,10 @@ class ReplMacro
 		@pattern = pattern
 		@template = template
 		puts "created macro"
-		@pattern.dump
-		@template.dump
+		@pattern.dump_short
+		puts "=>"
+		@template.dump_short
+		puts
 	end
 
 	def matches?(pattern, node)
@@ -84,7 +86,7 @@ class ReplMacro
 	
 	def match(node)
 		puts "matching:"
-		@pattern.dump(1)
+		@pattern.dump_short; puts
 		matches?(@pattern, node)
 	end
 

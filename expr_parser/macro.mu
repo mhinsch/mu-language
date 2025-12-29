@@ -11,17 +11,12 @@
 
 $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 
-
-;; maybe like this, so we can keep type info in args?
-;;[$fn $args_ : $block ] :=> [ $deffun' [\$fn], [ \$args_ ], \$block ]
-
 ;; strictly plain functions, no overloading etc.
 ;; we special-case the definition for now
 [$fn $arg : $block] :=> [ $defsfun' [\$fn], { \$arg : $0 } => \$block ]
 [$fn $args_ : $block] :=> [ $defsfun' [\$fn], { \$args_ : $0 } => \$block ]
 
 [$var : $val] :=> [$defvar' [ \$var ], \$val] 
-
 [$lhs = $rhs] :=> [$assign' [ \$lhs ], \$rhs]
 
 a : 1+5
@@ -34,21 +29,26 @@ c = b#1
 
 log x :
 	{	
-	println $0
+	println $1
+	c : 3
 	}
 
-2+a*3
+log c 
 
-if' a==6,
-	[ log "bla" ],
-	[ println 111 ]
+;;println c
 
-i : 1
+;;2+a*3
 
-while' [i<3],
-	[
-	println "loop"
-	println i
-	i = i + 1
-	]
+;;if' a==6,
+;;	[ log "bla" ],
+;;	[ println 111 ]
+
+;;i : 1
+
+;;while' [i<3],
+;;	[
+;;	println "loop"
+;;	println i
+;;	i = i + 1
+;;	]
 }

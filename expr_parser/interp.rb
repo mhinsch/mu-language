@@ -43,76 +43,43 @@ end
 
 
 class Interpreter
-	attr_reader :stack
+	attr_reader :ast
 
-	def initialize
-		@stack = IStack.new
-	end
-
-	def print_stack
-		@stack.dump
-	end
-	
-	def lookup_macro(vname)
-		@stack.lookup_macro(vname)
-	end
-		
-	def add_macro(name, val)
-		@stack.add_macro(name, val)
-	end
-	
-	def lookup_var(vname)
-		@stack.lookup_var(vname)
-	end
-		
-	def add_var(name, val)
-		@stack.add_var(name, val)
-	end
-
-	def set_value(name, val)
-		@stack.set_value(name, val)
-	end
-
-	def lookup_op(oname)
-		@stack.lookup_op(oname)
+	def initialize(ast)
+		@ast = ast
 	end
 		
 	# add function `name` that evaluates using function `oper`
-	def add_op(name, oper)
+	def add_op(name, oper, node=@ast)
 		puts ":: #{name}"
-		@stack.add_op(name, InterpOp.new(oper))
-	end
-	
-	def lookup_type(tname)
-		@stack.lookup_type(tname)
-	end
-
-	def add_type(name, val)
-		puts ":T #{name}"
-		@stack.add_type(name, val)
+		node.scope.add_op(name, InterpOp.new(oper))
 	end
 
 	# add a simple builtin type with a constant constructor
-	def add_s_type(tname, default)
+	def add_s_type(tname, default, node=@ast)
 		tp = IType.new(tname, default, [])
-		add_op(tname, lambda{|node, args| self.default_constructor(node.node_type)})
-		add_type(tname, tp)
+		add_op(tname, lambda{|nod, args| self.default_constructor(nod.node_type)}, node)
+		node.scope.add_type(tname, tp)
 	end
 
 	def join_blocks(_node, args)
 		args[-1].code? || error("can't join non-code nodes")
-		
 
 		puts("joining")
 		
+		args[-1].scope.dump
 		(args.size-2).downto(0) do |i|
-			args[i].dump
+			args[i].scope.dump
+			args[i].dump_short; puts
 			args[i].code? || error("can't join non-code nodes")
 			args[-1].args.insert(0, *args[i].args)
 		end
 
+		args[-1].adjust_sub_scopes
+
 		puts "joined blocks"
-		args[-1].dump
+		args[-1].scope.dump
+		args[-1].dump_short; puts
 		
 		args[-1]
 	end
@@ -137,14 +104,14 @@ class Interpreter
 		if idname == :tidentifier
 			type_def(str, val)
 		elsif idname == :identifier
-			add_var(str, val)
+			node.scope.add_var(str, val)
 		end
 
 		val
 	end
 
 
-	def define_simple_function(_node, args)
+	def define_simple_function(node, args)
 		val = args[1]
 		lhs = args[0].unquote
 		str = lhs.symbol
@@ -153,11 +120,11 @@ class Interpreter
 			error("quote expected in fn def")
 		end
 
-		add_op(str, simple_function(val))
+		add_op(str, simple_function(val), node)
 	end
 
 
-	def define_macro(_node, args)
+	def define_macro(node, args)
 		if args.length != 2
 			error("defmacro needs two arguments")
 		end
@@ -169,8 +136,8 @@ class Interpreter
 		# pattern.fncall? || error("pattern must be a fn call")
 		macro = ReplMacro.new(pattern, replacement)
 		
-		if (m = lookup_macro(macro.name)) == nil
-			add_macro(macro.name, [macro])
+		if (m = node.scope.lookup_macro(macro.name)) == nil
+			node.scope.add_macro(macro.name, [macro])
 		else
 			m << macro
 		end
@@ -182,7 +149,7 @@ class Interpreter
 	def apply_macro(args, macros)
 
 		puts "macro - trying to match: "
-		args.dump
+		args.dump_short; puts
 		
 		macros.each do |m|
 			mt = m.match(args)
@@ -228,7 +195,8 @@ class Interpreter
 		end
 
 		vname = lhside.symbol
-		set_value(vname, val)
+		ret = node.scope.lookup_name(vname, VAR, val)
+		ret || error(node.line, "unable to assign to #{vname}")
 		return val
 	end
 		
@@ -236,33 +204,49 @@ class Interpreter
 	def evaluate_quote(node, args = [])
 		node.code? || error("not a quote")
 
-		@stack.push(node, args)
+		puts "bare eval quote:"
+		node.scope.dump
+		
+		# $0, etc.
+		args.each do |a|
+			puts "auto var: #{a[0]} = #{a[1]}"
+			node.scope.add_name(a[0], a[1], VAR)
+		end
+		
+		puts "eval quote w/ args:"
+		node.scope.dump
 
 		ret = nil
 		for arg in node.args
+			print "scope line "; arg.scope.dump
+			#arg.scope.parent == node.scope || error(1, "scope!!")
 			ret = evaluate(arg)
 		end
 
-		@stack.pop
 		ret
 	end
 	
 
-	def evaluate(node, resolve_macros=true)
+	def evaluate(node)
+		puts "> #{node.token.line}"
 		ntype = node.node_type
 		symbol = node.symbol
-		puts "\t## #{ntype}, #{symbol}"
+		puts "\t-> #{ntype}, #{symbol}"
 
 		# variables
 		if ntype == :identifier || ntype == :sidentifier
 			var_name = symbol
-			return lookup_var(var_name)
+			ret = node.scope.lookup_var(var_name)
+			ret || error(node.line, "symbol #{var_name} not found")
+			return ret
 		end
 
 		# types
 		if ntype == :tidentifier
 			type_name = symbol
-			return lookup_type(type_name)
+			ret = node.lookup_type(type_name)
+			ret || error(node.line, "type #{type_name} not found")
+			return ret
 		end
 
 		# code
@@ -272,7 +256,8 @@ class Interpreter
 
 		# literals
 		if node.token.typ == :term
-			op = lookup_op(node.node_type)
+			op = node.scope.lookup_op(ntype)
+			op || error(node.line, "op #{ntype} not found")
 			return op.evaluate(node, [])
 		end
 
@@ -290,17 +275,25 @@ class Interpreter
 
 			puts "calling #{op_name}"
 			
-			if (macros = lookup_macro(oper.symbol))
+			if (macros = node.scope.lookup_macro(oper.symbol))
 				puts "found macro #{symbol}:"
 				puts "----"
 				repl_node = apply_macro(node, macros)
+
 				if repl_node == nil
 					puts(node.token.line, "no match found for macro #{op_name}")
 				else
+					# quick and dirty solution
+					# TODO do properly
+					repl_node.copy_scope(node)			
+					puts "macro result:"
+					repl_node.scope.dump
+					repl_node.dump_short; puts
 					return evaluate(repl_node)
 				end
 			end
-			op = lookup_op(op_name)
+			op = node.scope.lookup_op(op_name)
+			op || error(node.line, "op #{op_name} not found")
 			op_args.map!{|arg| evaluate(arg)}
 			#puts "args: #{op_args}"
 			return op.evaluate(node, op_args)
@@ -309,6 +302,9 @@ class Interpreter
 		error(node.token.line, "unknown node #{ntype}")
 	end
 
+	def run
+		evaluate_quote(@ast)
+	end
 end
 
 
@@ -324,6 +320,10 @@ def simple_function(body)
 	end
 
 	lambda do |_node, arg_values|
+		puts "sf lambda node: "
+		_node.dump_short; puts
+		puts "sf lambda body: "
+		body.dump_short; puts
 		fn_args = [[:$0, Node.create_call(",", :tuple, args:arg_values)]]
 		for i in 0...arg_values.size
 			fn_args << ["$#{i+1}".to_sym, arg_values[i]]
@@ -333,8 +333,6 @@ def simple_function(body)
 	end
 end
 
-# simplistic syntax for now:
-# name :: [args, ...] => [body]
 def function(fn_decl)
 	arg_decl = fn_decl.args[0]
 	if arg_decl.node_type != :rccode

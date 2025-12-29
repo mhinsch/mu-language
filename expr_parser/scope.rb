@@ -4,15 +4,41 @@ OP = 2
 TYPE = 3
 
 
+$scope_id = 0
+
 
 class IScope
-	attr_reader :scopes, :node
+	attr_reader :scopes, :scope_node, :parent, :id
 
-	def initialize(node)
-		@node = node
+	def initialize(node, parent)
+		@scope_node = node
+		@parent = parent
 		@scopes = [Hash.new, Hash.new, Hash.new, Hash.new]
+		@id = $scope_id
+		puts "** #{@id}"
+		$scope_id += 1
 	end
 
+	def dump
+		#puts @scopes[0]
+		if open?
+			print "[#{@id}]"
+		else
+			print "{#{@id}}"
+		end
+		if @parent != nil
+			if @parent.open?
+				print "[#{@parent.id}]"
+			else
+				print "{#{@parent.id}}"
+			end
+		end
+		puts ": #{@scopes[1]}"
+		#puts @scopes[2]
+		#puts @scopes[3]
+	end
+
+	
 	def has_name?(name, kind)
 		@scopes[kind].has_key?(name)
 	end
@@ -30,76 +56,34 @@ class IScope
 	end
 	
 	def open?
-		@node.node_type == :rocode
+		@scope_node.node_type == :rocode
 	end
-end
 
-
-class IStack
-	attr_reader :scopes
-
-	def initialize
-		@scopes = [IScope.new(nil)]
+	def top?
+		@parent == nil
 	end
 	
-	def dump
-		@scopes.reverse_each do |scope|
-			puts scope.node == nil ? "((" : (scope.open? ? "[" : "{")
-			puts "VAR"
-			puts scope.scopes[VAR]
-			puts "OP"
-			puts scope.scopes[OP]
-			puts "TYPE"
-			puts scope.scopes[TYPE]
-			puts scope.node == nil ? "))" : (scope.open? ? "]" : "}")
+	def lookup_name(a_name, kind, new_val = nil, const = false)
+		if new_val && const
+			error("#{a_name} is const")
 		end
-	end
-
-	def lookup_name(name, kind, new_val = nil, required = true)
-#		puts "looking up #{name} #{name.class}, readonly: #{new_val == nil}"
-		@scopes.reverse_each do |scope|
-			if scope.has_name?(name, kind)
-				if new_val != nil
-					scope.set_value(name, kind, new_val)
-				end
-				return scope.name(name, kind)
-			end
-			if ! scope.open?
-				break
-			end
-		end
-
-#		puts "checking global scope"
-
-		kname = case kind
-			when MACRO
-				"macro"
-			when VAR
-				"var"
-			when OP
-				"op"
-			when TYPE
-				"type"
-			end
 		
-		# check in global scope
-		# global scope is readonly, so no setting of variables
-		if @scopes[0].has_name?(name, kind)
-			if new_val != nil 
-				puts "#{kname} #{name} global scope is readonly"
-			else
-				return @scopes[0].name(name, kind)
+		if has_name?(a_name, kind)
+			if new_val != nil
+				set_value(a_name, kind, new_val)
 			end
+			return name(a_name, kind)
+		end
+		
+		if ! open? && new_val != nil
+			return nil
 		end
 
-		if required
-			puts "#{kname} #{name} not found"
-			dump
-
-			throw "exec error"
+		if top?
+			return nil
 		end
 
-		nil
+		@parent.lookup_name(a_name, kind, new_val, const || !open?)
 	end
 
 	def lookup_macro(vname)
@@ -108,7 +92,7 @@ class IStack
 
 	def add_macro(vname, val)
 		puts "adding macro #{vname}"
-		@scopes.last.add_name(vname, val, MACRO)
+		add_name(vname, val, MACRO)
 	end
 	
 	def lookup_var(vname)
@@ -116,19 +100,15 @@ class IStack
 	end
 
 	def add_var(name, val)
-		@scopes.last.add_name(name, val, VAR)
+		add_name(name, val, VAR)
 	end
 
-	def set_value(name, val)
-		lookup_name(name, VAR, val)
-	end
-	
 	def lookup_op(oname)
 		lookup_name(oname, OP)
 	end
 
 	def add_op(name, val)
-		@scopes.last.add_name(name, val, OP)
+		add_name(name, val, OP)
 	end
 
 	def lookup_type(tname)
@@ -136,17 +116,39 @@ class IStack
 	end
 
 	def add_type(name, val)
-		@scopes.last.add_name(name, val, TYPE)
-	end
-
-	def push(node, args)
-		@scopes << IScope.new(node)
-		args.each do |arg| 
-			add_var(arg[0], arg[1])
-		end
-	end
-
-	def pop()
-		@scopes.pop
+		add_name(name, val, TYPE)
 	end
 end
+
+
+class Node
+	attr_reader :scope	# scope object containing visible names 
+
+	def assign_scope(parent)
+		#puts "scope: " + @op.name.to_s + " " + parent.class.name
+
+		par_scope = parent ? parent.scope : nil
+		# scope of [ is linked to parent
+		if code?
+			@scope = IScope.new(self, par_scope)
+		else
+			@scope = par_scope
+		end
+
+		adjust_sub_scopes
+	end
+
+	def copy_scope(node)
+		@scope = node.scope
+
+		adjust_sub_scopes
+	end
+		
+	def adjust_sub_scopes
+		@args.each do |arg|
+			arg.assign_scope(self)
+		end
+	end
+		
+end
+

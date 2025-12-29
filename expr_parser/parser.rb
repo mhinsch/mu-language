@@ -34,6 +34,10 @@ class Node
 		nnode
 	end
 
+	def line
+		@token.line
+	end
+	
 	def add(t1, *t)
 		@args.push(t1, *t)
 	end
@@ -66,6 +70,30 @@ class Node
 
 		@args.each do |t|
 			t.dump(indent+1, use_name)
+		end
+	end
+
+	def dump_short(very_short=true)
+		if @args.size > 0
+			print "("
+		end
+
+		if !very_short
+			print "#{self.node_type}"
+		end
+		print "\"#{@token.string}\""
+
+		if @args.size > 0
+			print ":"
+		end
+		
+		@args.each do |t|
+			print " "
+			t.dump_short very_short
+		end
+
+		if args.size > 0
+			print ")"
 		end
 	end
 end
