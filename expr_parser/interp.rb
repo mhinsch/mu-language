@@ -63,7 +63,7 @@ class Interpreter
 	end
 
 	def join_blocks(_node, args)
-		args[-1].code? || error("can't join non-code nodes")
+		args[-1].code? || error(_node.line, "can't join non-code nodes")
 
 		puts("joining")
 		
@@ -71,7 +71,7 @@ class Interpreter
 		(args.size-2).downto(0) do |i|
 			args[i].scope.dump
 			args[i].dump_short; puts
-			args[i].code? || error("can't join non-code nodes")
+			args[i].code? || error(_node.line, "can't join non-code nodes")
 			args[-1].args.insert(0, *args[i].args)
 		end
 
@@ -324,7 +324,8 @@ def simple_function(body)
 		_node.dump_short; puts
 		puts "sf lambda body: "
 		body.dump_short; puts
-		fn_args = [[:$0, Node.create_call(",", :tuple, args:arg_values)]]
+		#fn_args = [[:$0, Node.create_call(",", :tuple1, args:arg_values)]]
+		fn_args = [[:$0, arg_values]]
 		for i in 0...arg_values.size
 			fn_args << ["$#{i+1}".to_sym, arg_values[i]]
 		end
@@ -410,7 +411,9 @@ def config_interp(int)
 	int.add_op :isless, binary(:<)
 	int.add_op :isgreater, binary(:>)
 
-	int.add_op :println, lambda{|node, args| puts args}
+	int.add_op :println, lambda {|node, args|
+		args || error(0, "println needs non-nil arg")
+		puts args }
 
 	int.add_op :if, lambda{|node, args|
 		if args[0] == true

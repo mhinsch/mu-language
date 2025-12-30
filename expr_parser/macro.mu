@@ -11,6 +11,8 @@
 
 $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 
+;; TODO args needs to be splatted
+[($arg, $args_) : $val] :=> [$defvar' [\$arg, \$args_], \$val]
 ;; strictly plain functions, no overloading etc.
 ;; we special-case the definition for now
 [$fn $arg : $block] :=> [ $defsfun' [\$fn], { \$arg : $0 } => \$block ]
@@ -27,13 +29,14 @@ c : 0
 
 c = b#1
 
-log x :
+log (x, y) :
 	{	
+	println $0
 	println $1
-	c : 3
+	println $2
 	}
 
-log c 
+log' a, c 
 
 ;;println c
 

@@ -81,10 +81,15 @@ class Node
 		if !very_short
 			print "#{self.node_type}"
 		end
-		print "\"#{@token.string}\""
 
-		if @args.size > 0
-			print ":"
+		if @token.string == "'"
+			print "c"
+		else
+			print "\"#{@token.string}\""
+
+			if @args.size > 0
+				print ":"
+			end
 		end
 		
 		@args.each do |t|

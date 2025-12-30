@@ -61,7 +61,7 @@ class ReplMacro
 			arg = pargs[i]
 			# $name_ collects the rest of the arguments in a tuple
 			if arg.node_type == :sidentifier && arg.symbol[-1] == '_'
-				nnode = Node.create_call(",", :tuple)
+				nnode = Node.create_call(",", :tuple1)
 				nnode.args.concat(nargs[i..-1])
 				m[arg.symbol] = nnode
 				return m
