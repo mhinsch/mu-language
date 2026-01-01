@@ -27,13 +27,13 @@ ts = ter.tokenise(prog)
 terms, _ = par.parse(ts)
 
 ast = terms[0]
+#ast.dump(0, true)
 ast.flatten_naries(Set[:tuple1, :tuple0])
 ast.remove_pars
 #ast.remove_nops(:nop)
-#ast.dump(0, true)
 ast.fun_arg_tuples
 ast.standardise_op_calls(Set[:plus, :minus, :times, :divide, :power, :def, :tuple1, :index,
-	:isequal, :isless, :defmacro, :assign, :arrow])
+	:isequal, :isless, :defmacro, :assign, :arrow, :splat])
 ast.assign_scope(nil)
 
 #ast.register_defs

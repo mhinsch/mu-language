@@ -21,6 +21,7 @@ def config_tokeniser(ter)
 	ter.op "<>", :isunequal, true
 	ter.op "=", :assign, true
 	ter.op "'", :call, true
+	ter.op ",..", :splat, true
 	ter.op ",", :tuple1, true
 	ter.op "+", :plus, true
 	ter.op "-", :minus, true
@@ -42,6 +43,7 @@ def config_parser(par)
 	par.infix :tuple0, 10, true 
 	par.infix :assign, 20
 	par.infix :call, 30
+	par.infix :splat, 49, true
 	par.infix :tuple1, 50, true 
 
 	par.infix :def, 60

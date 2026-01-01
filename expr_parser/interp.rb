@@ -105,8 +105,13 @@ class Interpreter
 			type_def(str, val)
 		elsif idname == :identifier
 			node.scope.add_var(str, val)
+		else
+			error(node.line, "can't define \"#{idname}\"")
 		end
 
+		puts "define #{str}"
+		node.scope.dump
+		
 		val
 	end
 
@@ -395,6 +400,10 @@ def config_interp(int)
 	int.add_op :integer, lambda{|node, args| node.token.string.to_i}
 	int.add_op :string, lambda{|node, args| node.token.string}
 
+	int.add_op :splat, lambda{|node, args|
+		res = args[0].is_a?(Array) ? args[0] : [ args[0] ]
+		res + (args[1].is_a?(Array) ? args[1] : [ args[1] ])
+		}
 	int.add_op :tuple1, lambda{|node, args| [*args]}
 	
 	int.add_op :index, lambda{|node, args| args[0][args[1]]}
