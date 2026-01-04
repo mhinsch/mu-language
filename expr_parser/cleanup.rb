@@ -85,6 +85,17 @@ class Node
 		end
 	end
 
+	def remove_opids
+		@args.each do |arg|
+			arg.remove_opids
+		end
+
+		if node_type == :opidentifier
+			ntype = @token.string[2..-1].to_sym
+			@token = Token.new(@token.string, ntype, :op, @token.line)
+		end
+	end
+
 	def standardise_op_calls(ops)
 		@args.each do |arg|
 			if arg.is_a? Token
@@ -95,7 +106,7 @@ class Node
 		
 		if ops.include?(node_type)
 			@args.insert(0, Node.new(@token))
-			@token = Token.new("'", :call, :op, nil)
+			@token = Token.new("'", :call, :op, @token.line)
 		end
 
 		if node_type == :juxt

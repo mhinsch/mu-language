@@ -9,14 +9,20 @@
 ;; similar syntax.
 
 
+;; some syntactic sugar
 $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 
-[($arg, $args_) : $val] :=> [$defvar' [\$arg,..\$args_], \$val]
-;; strictly plain functions, no overloading etc.
-;; we special-case the definition for now
-[$fn $arg : $block] :=> [ $defsfun' [\$fn], { \$arg : $0 } => \$block ]
-[$fn $args_ : $block] :=> [ $defsfun' [\$fn], { \$args_ : $0 } => \$block ]
+;; we don't want to have to quote the lhs of definitions and assignments, so
+;; we use some macros to make things nicer.
 
+;; as long as , is a fn call this needs to be captured first
+[$:tuple1 $args_ : $val] :=> [$defvar' [\$args_], \$val]
+;; strictly plain functions, no overloading etc.
+;; $0, $1, ... are always defined, but we want to use named args
+[$fname $arg : $block] :=> [ $defsfun' [\$fname], { \$arg : $0 } => \$block ]
+[$fname $args_ : $block] :=> [ $defsfun' [\$fname], { \$args_ : $0 } => \$block ]
+
+;; some sugar
 [$var : $val] :=> [$defvar' [ \$var ], \$val] 
 [$lhs = $rhs] :=> [$assign' [ \$lhs ], \$rhs]
 
@@ -35,11 +41,13 @@ println d
 log (x, y) :
 	{	
 	println $0
-	println $1
-	println $2
+	println x
+	println y
 	}
 
-log' a, c 
+log' a, b 
+
+println x
 
 ;;println c
 

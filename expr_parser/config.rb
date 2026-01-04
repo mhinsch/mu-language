@@ -5,6 +5,8 @@ def config_tokeniser(ter)
 	ter.term /\G[a-z][a-zA-Z0-9_]*/, :identifier
 	ter.term /\G[A-Z][a-zA-Z0-9_]*/, :tidentifier
 	ter.term /\G\$[a-zA-Z0-9_]+/, :sidentifier
+	# not elegant but quick solution
+	ter.term /\G\$:[a-zA-Z0-9_]+/, :opidentifier
 	ter.term /\G-?[0-9]+/, :integer
 	ter.term /\G"[^"]*"/, :string
 
@@ -77,6 +79,7 @@ def config_parser(par)
 	par.term :identifier
 	par.term :tidentifier
 	par.term :sidentifier
+	par.term :opidentifier
 	par.term :integer
 	par.term :string
 	par.term :nop

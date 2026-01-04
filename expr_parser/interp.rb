@@ -98,15 +98,23 @@ class Interpreter
 		# variable definition
 		val = args[1]
 		lhs = args[0].unquote
-		str = lhs.symbol
-		idname = lhs.node_type
 
-		if idname == :tidentifier
+		if lhs.node_type == :call && lhs.call_oper.node_type == :tuple1
+			return define_tuple(node, lhs, val)
+		end
+		
+		define_nv(node, lhs, val)
+	end
+
+	def define_nv(node, lhs, val)
+		ntype = lhs.node_type
+		str = lhs.symbol
+		if ntype == :tidentifier
 			type_def(str, val)
-		elsif idname == :identifier
+		elsif ntype == :identifier
 			node.scope.add_var(str, val)
 		else
-			error(node.line, "can't define \"#{idname}\"")
+			error(node.line, "can't define \"#{ntype}\"")
 		end
 
 		puts "define #{str}"
@@ -115,6 +123,28 @@ class Interpreter
 		val
 	end
 
+	def define_tuple(node, name_t, val_t)
+		puts "define tuple"
+		if val_t.class != Array
+			error(node.line, "definition requires tuple on RHS")
+		end
+
+		names = name_t.call_args
+		vals = val_t
+
+		if names.size != vals.size
+			error(node.line, "definition: mismatch between LHS and RHS")
+		end
+
+		res = []
+		names.each_index do |i|
+			n = names[i]
+			v = vals[i]
+			res << define_nv(node, n, v)
+		end
+
+		res
+	end
 
 	def define_simple_function(node, args)
 		val = args[1]

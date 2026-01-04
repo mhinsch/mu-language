@@ -63,6 +63,8 @@ class ReplMacro
 			if arg.node_type == :sidentifier && arg.symbol[-1] == '_'
 				nnode = Node.create_call(",", :tuple1)
 				nnode.args.concat(nargs[i..-1])
+				#if m.has_key?(arg.symbol[0..-1])
+					
 				m[arg.symbol] = nnode
 				return m
 			end
