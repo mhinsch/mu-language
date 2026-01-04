@@ -23,7 +23,7 @@ def config_tokeniser(ter)
 	ter.op "<>", :isunequal, true
 	ter.op "=", :assign, true
 	ter.op "'", :call, true
-	ter.op ",..", :splat, true
+	ter.op ",*", :splat, true
 	ter.op ",", :tuple1, true
 	ter.op "+", :plus, true
 	ter.op "-", :minus, true
