@@ -437,6 +437,7 @@ def config_interp(int)
 	int.add_op :tuple1, lambda{|node, args| [*args]}
 	
 	int.add_op :index, lambda{|node, args| args[0][args[1]]}
+	int.add_op :s_index, lambda{|node, args| args[0][args[1]]}
 
 	int.add_op :arrow, lambda{|node, args| int.join_blocks(node, args) }
 	

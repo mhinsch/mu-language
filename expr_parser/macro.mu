@@ -22,9 +22,14 @@ $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 [$fname $arg : $block] :=> [ $defsfun' [\$fname], { \$arg : $0 } => \$block ]
 [$fname $args_ : $block] :=> [ $defsfun' [\$fname], { \$args_ : $0 } => \$block ]
 
-;; some sugar
+;; plain def
 [$var : $val] :=> [$defvar' [ \$var ], \$val] 
+;; plain assignment
 [$lhs = $rhs] :=> [$assign' [ \$lhs ], \$rhs]
+;; static index doesn't eval rhs
+[$expr.$idx] :=> [\$expr.[\$idx]]
+
+
 
 a : 1+5
 
@@ -32,7 +37,7 @@ b : (1, 2, 3)
 
 c : 0
 
-c = b#1
+c = b.1
 
 d : (1, 2,* (3, 4),* (5, 6),* 7)
 

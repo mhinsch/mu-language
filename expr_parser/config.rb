@@ -31,6 +31,7 @@ def config_tokeniser(ter)
 	ter.op "/", :divide, true
 	ter.op "^", :power, true
 	ter.op "#", :index, true
+	ter.op ".", :s_index, true
 	ter.op "\\", :insert, false
 	ter.op "(", :lpar, true
 	ter.op ")", :rpar, false
@@ -69,6 +70,7 @@ def config_parser(par)
 	par.infix :juxt, 500
 
 	par.infix :index, 600
+	par.infix :s_index, 600
 
 	par.prefix :insert, 1000
 	
