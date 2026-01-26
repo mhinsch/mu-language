@@ -21,6 +21,50 @@ Features I would like it to have (most of which are not implemented or even desi
 
 Maybe think of Mu as a statically typed cross between Lisp (sans the parentheses) and C++ that also had some encounters with a.o. TCL, Red, Julia and Rust
 
+
+## Roadmap
+
+### interpreter mu_0 (Ruby)
+
+* [x] tokeniser
+* [x] parser
+* [x] uniform AST
+* [x] basic arithmetic
+* [x] tuples
+* [x] assignments
+* [x] variable declarations
+* [x] \(executable) code blocks
+* [x] if, while
+* [x] nested static scopes
+* [x] pattern-based AST macros
+* [x] simple (non-overloaded) functions
+	* [x] automatic parameters ($0, ...)
+	* [x] user-named parameters
+* [] constness
+* [] types
+* [] simple static overloading
+* [] compound types
+* [] basic library functions
+
+### compiler mu_1 -> C (mu_0)
+
+* [] all of mu_0
+	* [] tokeniser
+	* [] parser
+	* ...
+* [] modules
+* [] run-time polymorphism
+* [] compile-time vs. run-time
+* ...
+
+### compiler mu_1 -> C (mu_1)
+
+* ...
+
+### interpreter mu_1 (mu_1)
+
+* ...
+
 ## History
 
 This project started (as so many) out of a deep frustration with the eldritch abomination that is C++. 
