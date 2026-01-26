@@ -40,21 +40,21 @@ Maybe think of Mu as a statically typed cross between Lisp (sans the parentheses
 * [x] simple (non-overloaded) functions
 	* [x] automatic parameters ($0, ...)
 	* [x] user-named parameters
-* [] constness
-* [] types
-* [] simple static overloading
-* [] compound types
-* [] basic library functions
+* [ ] constness
+* [ ] types
+* [ ] simple static overloading
+* [ ] compound types
+* [ ] basic library functions
 
 ### compiler mu_1 -> C (mu_0)
 
-* [] all of mu_0
-	* [] tokeniser
-	* [] parser
+* [ ] all of mu_0
+	* [ ] tokeniser
+	* [ ] parser
 	* ...
-* [] modules
-* [] run-time polymorphism
-* [] compile-time vs. run-time
+* [ ] modules
+* [ ] run-time polymorphism
+* [ ] compile-time vs. run-time
 * ...
 
 ### compiler mu_1 -> C (mu_1)
