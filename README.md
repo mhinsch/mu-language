@@ -22,6 +22,42 @@ Features I would like it to have (most of which are not implemented or even desi
 Maybe think of Mu as a statically typed cross between Lisp (sans the parentheses) and C++ that also had some encounters with a.o. TCL, Red, Julia and Rust
 
 
+## Concepts
+
+A few concepts that are important for mu, in no particular order. Note that all syntax is potentially subject to change.
+
+### Consistency and orthogonality
+
+I am trying to make mu as consistent and orthogonal as possible. There are admittedly not really any good practical reasons for this. We seem to be totally fine with our messy natural languages and even mathematical notation relies a lot on context to disambiguate between potential interpretations. The language I'm using for most of my work at the moment - Julia - has a syntax that is a lot more consistent than let's say C++, but it still heavily re-uses symbols and even syntactic constructs. Nevertheless I never had any issues reading Julia code. So, this is probably mostly a point of personal aesthetics. 
+
+### Bicameral syntax
+
+I always found the concept of homoiconicity a bit dodgy, but [this](https://parentheticallyspeaking.org/articles/bicameral-not-homoiconic/) very nice blog post by Shriram Krishnamurthi finally made it make sense. When I read it I realised that this was exactly what I was trying to do with mu. 
+
+Mu has a very simple pre-defined syntax consisting only of binary and unary operator expressions plus a few types of brackets. The basic parser can therefore be very simple and, apart from operator precedence, doesn't encode any semantic information.
+
+Similar to Lisp, only a small subset of syntactically valid mu programs is semantically valid, however. For example, the definition operator `:` (currently) requires either a symbol, a tuple of symbols or a function call expression (with additional, more complicated constraints) as a first argument.
+
+### Evaluation
+
+Most languages eagerly evaluate expressions and special-case some constructs or functions whose arguments are left as is. In ALGOL-type languages, for example, constructs like `if` or `while` do not evaluate their code bodies (nor the condition in the case of while) before the construct itself is invoked. This is usually built into the syntax of the language itself. Lisps are a bit more principled and make no surface-level distinction between ordinay function calls and those that do not evaluate their arguments (special forms - IMHO this is one of the reasons why Lisps are so hard to read). The distinction still exists, though, and special forms still need to be special-cased in the compiler/interpreter.
+
+In mu the distinction between evaluation and quotation is explicit. Two types of brackets '{}' and '[]' quote their content (they differ in how they handle scope). I decided that having to do this everywhere would actually be too annoying in practice, however, (for example the LHS of declarations or assignments would always have to be quoted as would be any reference) so for a few cases I use AST macros to translate an unquoted into a quoted form.
+
+For example this translates the definition operator into a call to the built-in function `$defvar`, in the process quoting its first argument.
+```
+[$var : $val] :=> [$defvar' [ \$var ], \$val] 
+```
+
+Note, though, that these macros are part of the program and completely optional.
+
+### Multiple dispatch
+
+After years of using Julia the idea of blessing the first argument of a function with a special role just feels wrong, so multiple dispatch it is. I think it does have practical advantages, although it has been overhyped (substantially) in the Julia community in my opinion.
+
+Static multiple dispatch is easy (and quite a few languages do it), but *efficient* runtime multiple dispatch (i.e. runtime polymorphism that includes more than one argument) is hard (and no, Julia has definitely not solved this one). I think I have an idea how to do it, but it's going to be a while before that becomes relevant.
+
+
 ## Roadmap
 
 ### interpreter mu_0 (Ruby)
@@ -46,12 +82,15 @@ Maybe think of Mu as a statically typed cross between Lisp (sans the parentheses
 * [ ] compound types
 * [ ] basic library functions
 
-### compiler mu_1 -> C (mu_0)
+### compiler mu_0 -> C (mu_0)
 
 * [ ] all of mu_0
 	* [ ] tokeniser
 	* [ ] parser
 	* ...
+
+### compiler mu_1 -> C (mu_0)
+
 * [ ] modules
 * [ ] run-time polymorphism
 * [ ] compile-time vs. run-time
