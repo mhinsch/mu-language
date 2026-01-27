@@ -38,7 +38,7 @@ Mu has a very simple pre-defined syntax consisting only of binary and unary oper
 
 Similar to Lisp, only a small subset of syntactically valid mu programs is semantically valid, however. For example, the definition operator `:` (currently) requires either a symbol, a tuple of symbols or a function call expression (with additional, more complicated constraints) as a first argument.
 
-### Evaluation
+### Explicit evaluation
 
 Most languages eagerly evaluate expressions and special-case some constructs or functions whose arguments are left as is. In ALGOL-type languages, for example, constructs like `if` or `while` do not evaluate their code bodies (nor the condition in the case of while) before the construct itself is invoked. This is usually built into the syntax of the language itself. Lisps are a bit more principled and make no surface-level distinction between ordinay function calls and those that do not evaluate their arguments (special forms - IMHO this is one of the reasons why Lisps are so hard to read). The distinction still exists, though, and special forms still need to be special-cased in the compiler/interpreter.
 
@@ -56,6 +56,13 @@ Note, though, that these macros are part of the program and completely optional.
 After years of using Julia the idea of blessing the first argument of a function with a special role just feels wrong, so multiple dispatch it is. I think it does have practical advantages, although it has been overhyped (substantially) in the Julia community in my opinion.
 
 Static multiple dispatch is easy (and quite a few languages do it), but *efficient* runtime multiple dispatch (i.e. runtime polymorphism that includes more than one argument) is hard (and no, Julia has definitely not solved this one). I think I have an idea how to do it, but it's going to be a while before that becomes relevant.
+
+
+### Pattern matching
+
+There is some overlap with the previous point. Essentially languages with static, type-based overloading, like C++, implement a limited form of compile time pattern matching. I want to have reified compile time patterns and pattern matching in mu, so that function calls are just a special case with a nice syntax. Unsurprisingly I'm not the first one to have this idea (I know of at least one language that uses pattern matching for function calls and one that has first-class patterns (I'll dig up the links at some point)); I did come up with it on my own, though.
+
+I'm a bit concerned that this might end up being one of those features that make it very easy to write incomprehensible code (like macros) without (unlike macros) providing a lot of benefits in return, but we'll see.
 
 
 ## Roadmap
