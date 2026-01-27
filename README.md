@@ -124,3 +124,5 @@ other hand essentially fills the C++-but-better niche.
 At the same time I realised that I had long since moved away from my original aim anyway. It turned out what I was *actually* trying to do, was to
 find a minimal core that a language like C++ or Rust could be built from. At this point I also had learned *a lot* more about programming languages and 
 noticed that spiritually languages like Lisp, TCL or Red were much closer to my ideas than C++.
+
+Over the years I went through various aborted attempts to write a compiler or interpreter for mu (along with changes in the language itself, as well as its name), but I think enough parts of the language and the concepts behind it have now crystallised in my mind that this is actually going to go somewhere. 
