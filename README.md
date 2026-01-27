@@ -65,6 +65,11 @@ There is some overlap with the previous point. Essentially languages with static
 I'm a bit concerned that this might end up being one of those features that make it very easy to write incomprehensible code (like macros) without (unlike macros) providing a lot of benefits in return, but we'll see.
 
 
+### Guard rails
+
+Back when I first started thinking about my own programming language I was very firmly in the "constrain the programmer for their own good" camp. Over the years and the more the practical reasons for creating my own language had been solved by other languages the more I've moved away from that. I think the Lisp curse exists, but I'm doing this for fun after all and more power is just more fun.
+
+
 ## Roadmap
 
 ### interpreter mu_0 (Ruby)
