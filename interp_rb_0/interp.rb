@@ -1,4 +1,5 @@
 require './interp_node'
+require './types'
 require './repl_macro'
 require './scope'
 
@@ -62,8 +63,8 @@ class Interpreter
 		node.scope.add_type(tname, tp)
 	end
 
-	def join_blocks(_node, args)
-		args[-1].code? || error(_node.line, "can't join non-code nodes")
+	def join_blocks(node, args)
+		args[-1].code? || error(node.line, "can't join non-code nodes")
 
 		puts("joining")
 		
@@ -71,7 +72,7 @@ class Interpreter
 		(args.size-2).downto(0) do |i|
 			args[i].scope.dump
 			args[i].dump_short; puts
-			args[i].code? || error(_node.line, "can't join non-code nodes")
+			args[i].code? || error(node.line, "can't join non-code nodes")
 			args[-1].args.insert(0, *args[i].args)
 		end
 
@@ -94,36 +95,29 @@ class Interpreter
 		end
 	end
 	
+
 	def define(node, args)
 		# variable definition
 		val = args[1]
-		lhs = args[0].unquote
+		lhs = args[0]
+		
+		mut = false
+		
+		if lhs.node_type == :call && lhs.call_oper.node_type == :mut
+			mut = true
+			lhs = lhs.call_args[0]
+		end
+
+		lhs = lhs.unquote
 
 		if lhs.node_type == :call && lhs.call_oper.node_type == :tuple1
-			return define_tuple(node, lhs, val)
+			return define_tuple(node, lhs, val, mut)
 		end
 		
-		define_nv(node, lhs, val)
+		define_nv(node, lhs, val, mut)
 	end
 
-	def define_nv(node, lhs, val)
-		ntype = lhs.node_type
-		str = lhs.symbol
-		if ntype == :tidentifier
-			type_def(str, val)
-		elsif ntype == :identifier
-			node.scope.add_var(str, val)
-		else
-			error(node.line, "can't define \"#{ntype}\"")
-		end
-
-		puts "define #{str}"
-		node.scope.dump
-		
-		val
-	end
-
-	def define_tuple(node, name_t, val_t)
+	def define_tuple(node, name_t, val_t, mut)
 		puts "define tuple"
 		if val_t.class != Array
 			error(node.line, "definition requires tuple on RHS")
@@ -140,11 +134,30 @@ class Interpreter
 		names.each_index do |i|
 			n = names[i]
 			v = vals[i]
-			res << define_nv(node, n, v)
+			res << define_nv(node, n, v, mut)
 		end
 
 		res
 	end
+
+	def define_nv(node, lhs, val, mut)
+		ntype = lhs.node_type
+		str = lhs.symbol
+		lhs.set_tag(:mutable, mut)
+		if ntype == :tidentifier
+			type_def(str, val)
+		elsif ntype == :identifier
+			node.scope.add_var(str, val)
+		else
+			error(node.line, "can't define \"#{ntype}\"")
+		end
+
+		puts "define #{str}"
+		node.scope.dump
+		
+		val
+	end
+
 
 	def define_simple_function(node, args)
 		val = args[1]
@@ -220,16 +233,27 @@ class Interpreter
 		@stack.add_type(name, t_obj)
 	end
 		
-	def assign(node, args)
-		lhside = args[0].unquote
-		val = args[1]
 
-		if lhside.node_type != :identifier
+	def check_mutability(node, args)
+		var = args[0].unquote
+		
+		if var.node_type != :identifier
 			puts "lvalue required"
 			exit
 		end
 
-		vname = lhside.symbol
+		vname = var.symbol
+		ret = node.scope.lookup_name(vname, VAR)
+		ret || error(node.line, "unable to find #{vname}")
+		ret.tags[mutability] || error(node.line, "#{vname} seems to be const")
+
+		ret
+	end
+	
+	def assign(node, args)
+		val = args[1]
+
+		vname = args[1].symbol
 		ret = node.scope.lookup_name(vname, VAR, val)
 		ret || error(node.line, "unable to assign to #{vname}")
 		return val
@@ -245,6 +269,8 @@ class Interpreter
 		# $0, etc.
 		args.each do |a|
 			puts "auto var: #{a[0]} = #{a[1]}"
+			# TODO use define
+			#define(node, a[0], a[1])
 			node.scope.add_name(a[0], a[1], VAR)
 		end
 		
@@ -424,6 +450,7 @@ def config_interp(int)
 	int.add_op :$defsfun, lambda{ |node, args| int.define_simple_function(node, args) }
 	int.add_op :$replace, lambda{ |node, args| int.define_macro(node, args) }
 	int.add_op :$assign, lambda{ |node, args| int.assign(node, args) }
+	int.add_op :ref, lambda{ |node, args| int.check_mutability(node, args) }
 	
 	int.add_op :nop, lambda{|node, args| nil}
 

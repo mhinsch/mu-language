@@ -31,7 +31,11 @@ class Node
 
 	def unquote
 		if ! code?
-			error("can't unquote non-quote")
+			error(line, "can't unquote non-quote")
+		end
+
+		if @args.size > 1
+			error(line, "unquoting tuples not supported yet")
 		end
 
 		@args[0]

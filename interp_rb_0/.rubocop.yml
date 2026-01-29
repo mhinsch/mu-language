@@ -1,0 +1,20 @@
+Layout/IndentationStyle:
+  Enabled: false
+
+Layout/IndentationWidth:
+  Enabled: false
+
+Layout/EmptyLines:
+  Enabled: false
+  
+Style/Documentation:
+  Enabled: false
+
+Metrics:
+  Enabled: false
+
+Style:
+  Enabled: false
+
+Layout:
+  Enabled: false

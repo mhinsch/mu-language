@@ -1,13 +1,4 @@
 {
-;; Note:
-;; Make closures explicit, i.e.:
-;; - [] has lexical scope but *can't* be assigned, copied or returned (-> type system),
-;;   only moved or executed
-;; - {} has dynamic scope and can be assigned, but any closing over external variables
-;;   has to be made explicit
-;; Then function arguments and closed over variables become very similar and should have
-;; similar syntax.
-
 
 ;; some syntactic sugar
 $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
@@ -15,19 +6,41 @@ $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 ;; we don't want to have to quote the lhs of definitions and assignments, so
 ;; we use some macros to make things nicer.
 
+;; a few special cases of definitions
+;; these need to be captured first to disambiguate them from function calls
+
+;; tuple on LHS of definition
 ;; as long as , is a fn call this needs to be captured first
+;; $:... is special-cased in the parser atm, needs a better solution
 [$:tuple1 $args_ : $val] :=> [$defvar' [\$args_], \$val]
+;; mutable variables
+;; ref doesn't evaluate, so this is fine
+[$var! : $val] :=> [$defvar' \$var!, \$val]
+
+;; function calls
+
 ;; strictly plain functions, no overloading etc.
 ;; $0, $1, ... are always defined, but we want to use named args
 [$fname $arg : $block] :=> [ $defsfun' [\$fname], { \$arg : $0 } => \$block ]
 [$fname $args_ : $block] :=> [ $defsfun' [\$fname], { \$args_ : $0 } => \$block ]
 
-;; plain def
+;; overloading
+;; with a bit of reflection match should be implementable as a regular function
+
+[$fname $args :: $block] :=> 
+	[ 
+	$addpattern' [\$fname], [\$args], \$block
+	[ \$fname $callargs ] :=> [ match([\$fname], [\\$callargs])' \\$callargs ]
+	]
+
+[$var!] :=> [$mut [\$var]]
+
+;; finally, this is the plain definition
 [$var : $val] :=> [$defvar' [ \$var ], \$val] 
 ;; plain assignment
-[$lhs = $rhs] :=> [$assign' [ \$lhs ], \$rhs]
-;; static index doesn't eval rhs
-[$expr.$idx] :=> [\$expr.[\$idx]]
+[$lhs = $rhs] :=> [$assign' \$lhs!, \$rhs]
+;; static index needs a symbol or a statically evaluatable expression
+[$expr.$idx] :=> [$index' \$expr, [\$idx]]
 
 
 
@@ -35,11 +48,11 @@ a : 1+5
 
 b : (1, 2, 3)
 
-c : 0
+c! : 0
 
 c = b.1
 
-d : (1, 2,* (3, 4),* (5, 6),* 7)
+d : (1, 2,* (3, 4),* (5, 6))
 
 println d
 

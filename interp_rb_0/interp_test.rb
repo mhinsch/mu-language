@@ -4,7 +4,6 @@ require 'irb'
 require './parser.rb'
 require './config.rb'
 require './cleanup.rb'
-require './decl.rb'
 require './interp.rb'
 
 
@@ -33,7 +32,7 @@ ast.remove_pars
 #ast.remove_nops(:nop)
 ast.fun_arg_tuples
 ast.standardise_op_calls(Set[:plus, :minus, :times, :divide, :power, :def, :tuple1, :index,
-	:isequal, :isless, :defmacro, :assign, :arrow, :splat])
+	:s_index, :isequal, :isless, :defmacro, :assign, :arrow, :splat, :ref])
 ast.remove_opids
 ast.assign_scope(nil)
 

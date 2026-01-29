@@ -22,6 +22,53 @@ Features I would like it to have (most of which are not implemented or even desi
 Maybe think of Mu as a statically typed cross between Lisp (sans the parentheses) and C++ that also had some encounters with a.o. TCL, Red, Julia and Rust
 
 
+## Roadmap
+
+### interpreter mu_0 (Ruby)
+
+* [x] tokeniser
+* [x] parser
+* [x] uniform AST
+* [x] basic arithmetic
+* [x] tuples
+* [x] assignments
+* [x] variable declarations
+* [x] \(executable) code blocks
+* [x] if, while
+* [x] nested static scopes
+* [x] pattern-based AST macros
+* [x] simple (non-overloaded) functions
+	* [x] automatic parameters ($0, ...)
+	* [x] user-named parameters
+* [ ] constness
+* [ ] types
+* [ ] simple static overloading
+* [ ] compound types
+* [ ] basic library functions
+
+### compiler mu_0 -> C (mu_0)
+
+* [ ] all of mu_0
+	* [ ] tokeniser
+	* [ ] parser
+	* ...
+
+### compiler mu_1 -> C (mu_0)
+
+* [ ] modules
+* [ ] run-time polymorphism
+* [ ] compile-time vs. run-time
+* ...
+
+### compiler mu_1 -> C (mu_1)
+
+* ...
+
+### interpreter mu_1 (mu_1)
+
+* ...
+
+
 ## Concepts
 
 A few concepts that are important for mu, in no particular order. Note that all syntax is potentially subject to change.
@@ -69,52 +116,6 @@ I'm a bit concerned that this might end up being one of those features that make
 
 Back when I first started thinking about my own programming language I was very firmly in the "constrain the programmer for their own good" camp. Over the years and the more the practical reasons for creating my own language had been solved by other languages the more I've moved away from that. I think the Lisp curse exists, but I'm doing this for fun after all and more power is just more fun.
 
-
-## Roadmap
-
-### interpreter mu_0 (Ruby)
-
-* [x] tokeniser
-* [x] parser
-* [x] uniform AST
-* [x] basic arithmetic
-* [x] tuples
-* [x] assignments
-* [x] variable declarations
-* [x] \(executable) code blocks
-* [x] if, while
-* [x] nested static scopes
-* [x] pattern-based AST macros
-* [x] simple (non-overloaded) functions
-	* [x] automatic parameters ($0, ...)
-	* [x] user-named parameters
-* [ ] constness
-* [ ] types
-* [ ] simple static overloading
-* [ ] compound types
-* [ ] basic library functions
-
-### compiler mu_0 -> C (mu_0)
-
-* [ ] all of mu_0
-	* [ ] tokeniser
-	* [ ] parser
-	* ...
-
-### compiler mu_1 -> C (mu_0)
-
-* [ ] modules
-* [ ] run-time polymorphism
-* [ ] compile-time vs. run-time
-* ...
-
-### compiler mu_1 -> C (mu_1)
-
-* ...
-
-### interpreter mu_1 (mu_1)
-
-* ...
 
 ## History
 
