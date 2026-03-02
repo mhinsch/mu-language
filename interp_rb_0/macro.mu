@@ -12,25 +12,24 @@ $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 ;; tuple on LHS of definition
 ;; as long as , is a fn call this needs to be captured first
 ;; $:... is special-cased in the parser atm, needs a better solution
-[$:tuple1 $args_ : $val] :=> [$defvar' [\$args_], \$val]
+[$:tuple1 $args__ : $val] :=> [$defvar' [\$args__], \$val]
 ;; mutable variables
 ;; ref doesn't evaluate, so this is fine
-[$var! : $val] :=> [$defvar' \$var!, \$val]
+[$var! : $val] :=> [$defvar' [\$var], \$val, 0]
 
 ;; function calls
 
 ;; strictly plain functions, no overloading etc.
 ;; $0, $1, ... are always defined, but we want to use named args
-[$fname $arg : $block] :=> [ $defsfun' [\$fname], { \$arg : $0 } => \$block ]
 [$fname $args_ : $block] :=> [ $defsfun' [\$fname], { \$args_ : $0 } => \$block ]
 
 ;; overloading
 ;; with a bit of reflection match should be implementable as a regular function
 
-[$fname $args :: $block] :=> 
+[$fname $args_ :: $block] :=> 
 	[ 
-	$addpattern' [\$fname], [\$args], \$block
-	[ \$fname $callargs ] :=> [ match([\$fname], [\\$callargs])' \\$callargs ]
+	$addpattern' [\$fname], [\$args_], { \$args_ : $0 } => \$block
+	[ \$fname $callargs_ ] :=> [ match([\$fname], [\\$callargs_])' \\$callargs_ ] 
 	]
 
 [$var!] :=> [$mut [\$var]]

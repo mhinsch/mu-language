@@ -89,3 +89,60 @@ def config_parser(par)
 	par.term :string
 	par.term :nop
 end
+
+
+def config_interp(int)
+	int.add_s_type :I, 0
+	int.add_s_type :F, 0.0
+	int.add_s_type :S, ""
+	
+	int.add_op :$defvar, lambda{ |node, args| int.define(node, args) }
+	int.add_op :$defsfun, lambda{ |node, args| int.define_simple_function(node, args) }
+	int.add_op :$replace, lambda{ |node, args| int.define_macro(node, args) }
+	int.add_op :$assign, lambda{ |node, args| int.assign(node, args) }
+	int.add_op :$mut, lambda{ |node, args| int.check_mutability(node, args) }
+	
+	int.add_op :nop, lambda{|node, args| nil}
+
+	int.add_op :integer, lambda{|node, args| node.token.string.to_i}
+	int.add_op :string, lambda{|node, args| node.token.string}
+
+	int.add_op :splat, lambda{|node, args|
+		res = args[0].is_a?(Array) ? args[0] : [ args[0] ]
+		res + (args[1].is_a?(Array) ? args[1] : [ args[1] ])
+		}
+	int.add_op :tuple1, lambda{|node, args| [*args]}
+	
+	int.add_op :index, lambda{|node, args| args[0][args[1]]}
+	int.add_op :s_index, lambda{|node, args| args[0][args[1]]}
+
+	int.add_op :arrow, lambda{|node, args| int.join_blocks(node, args) }
+	
+	int.add_op :plus, binary(:+)
+	int.add_op :minus, binary(:-)
+	int.add_op :times, binary(:*)
+	int.add_op :divide, binary(:/)
+	int.add_op :power, binary(:^)
+	int.add_op :isequal, binary(:==)
+	int.add_op :isunequal, binary(:!=)
+	int.add_op :isless, binary(:<)
+	int.add_op :isgreater, binary(:>)
+
+	int.add_op :println, lambda {|node, args|
+		args || error(0, "println needs non-nil arg")
+		puts args }
+
+	int.add_op :if, lambda{|node, args|
+		if args[0] == true
+			int.evaluate_quote(args[1])
+		elsif args.length > 2
+			int.evaluate_quote(args[2])
+		else
+			nil
+		end}
+
+	int.add_op :while, lambda{|node, args|
+		while int.evaluate_quote(args[0])
+			int.evaluate_quote(args[1])
+		end} 
+end

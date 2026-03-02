@@ -1,11 +1,11 @@
 require './interp_node'
-require './types'
+#require './types'
 require './repl_macro'
 require './scope'
 
 
 class InterpOp
-	attr_reader :eval_fn
+	attr_reader :eval_fn 
 
 	def initialize(run)
 		@eval_fn = run
@@ -13,6 +13,10 @@ class InterpOp
 
 	def evaluate(node, args)
 		@eval_fn.call(node, args)
+	end
+
+	def mu_type
+		:function
 	end
 end
 
@@ -40,6 +44,10 @@ class IType
 			@default
 		end
 	end
+
+	def mu_type
+		:type
+	end
 end
 
 
@@ -53,14 +61,14 @@ class Interpreter
 	# add function `name` that evaluates using function `oper`
 	def add_op(name, oper, node=@ast)
 		puts ":: #{name}"
-		node.scope.add_op(name, InterpOp.new(oper))
+		node.scope.define_op(name, InterpOp.new(oper))
 	end
 
 	# add a simple builtin type with a constant constructor
 	def add_s_type(tname, default, node=@ast)
 		tp = IType.new(tname, default, [])
 		add_op(tname, lambda{|nod, args| self.default_constructor(nod.node_type)}, node)
-		node.scope.add_type(tname, tp)
+		node.scope.define_type(tname, tp)
 	end
 
 	def join_blocks(node, args)
@@ -85,15 +93,15 @@ class Interpreter
 		args[-1]
 	end
 	
-	def eval_as_tuple_type(members)
-		members.each do |m|
-			if m.node_type != :def
-				puts "member definition expected"
-				exit
-			end
-			
-		end
-	end
+#	def eval_as_tuple_type(members)
+#		members.each do |m|
+#			if m.node_type != :def
+#				puts "member definition expected"
+#				exit
+#			end
+#			
+#		end
+#	end
 	
 
 	def define(node, args)
@@ -101,20 +109,15 @@ class Interpreter
 		val = args[1]
 		lhs = args[0]
 		
-		mut = false
-		
-		if lhs.node_type == :call && lhs.call_oper.node_type == :mut
-			mut = true
-			lhs = lhs.call_args[0]
-		end
+		const = args.size == 2 || args[2] == 1
 
 		lhs = lhs.unquote
 
 		if lhs.node_type == :call && lhs.call_oper.node_type == :tuple1
-			return define_tuple(node, lhs, val, mut)
+			return define_tuple(node, lhs, val, const)
 		end
 		
-		define_nv(node, lhs, val, mut)
+		define_name_value(node, lhs, val, const)
 	end
 
 	def define_tuple(node, name_t, val_t, mut)
@@ -134,28 +137,21 @@ class Interpreter
 		names.each_index do |i|
 			n = names[i]
 			v = vals[i]
-			res << define_nv(node, n, v, mut)
+			res << node.scope.define_name_value(node, n, v, mut)
 		end
 
 		res
 	end
 
-	def define_nv(node, lhs, val, mut)
+	def define_name_value(node, lhs, val, mut)
 		ntype = lhs.node_type
 		str = lhs.symbol
-		lhs.set_tag(:mutable, mut)
-		if ntype == :tidentifier
-			type_def(str, val)
-		elsif ntype == :identifier
-			node.scope.add_var(str, val)
-		else
+		
+		if ntype != :identifier
 			error(node.line, "can't define \"#{ntype}\"")
 		end
-
-		puts "define #{str}"
-		node.scope.dump
 		
-		val
+		node.scope.define_var(str, val, mut)
 	end
 
 
@@ -185,9 +181,9 @@ class Interpreter
 		macro = ReplMacro.new(pattern, replacement)
 		
 		if (m = node.scope.lookup_macro(macro.name)) == nil
-			node.scope.add_macro(macro.name, [macro])
+			node.scope.define_macro(macro.name, [macro])
 		else
-			m << macro
+			m.value << macro
 		end
 
 		return nil
@@ -209,29 +205,25 @@ class Interpreter
 		nil
 	end
 
-	# TODO
-	# compound types
-	# parametric types
-	#   = function type -> type
 	
-	def type_def(name, impl)
-		if impl.node_type == :rccode 
-			if impl.args[0].node_type != :tuple1
-				puts "expected list of definitions"
-				exit
-			end
-			
-			t_obj, constructors = eval_as_tuple_type(impl.args[0])
-			# only works for 1 ATM, needs overloading for more
-			constructors.each do |c|
-				add_op(name, c)
-			end	
-		elsif impl.node_type == :type
-			t_obj = impl
-		end
-		
-		@stack.add_type(name, t_obj)
-	end
+#	def type_def(name, impl)
+#		if impl.node_type == :rccode 
+#			if impl.args[0].node_type != :tuple1
+#				puts "expected list of definitions"
+#				exit
+#			end
+#			
+#			t_obj, constructors = eval_as_tuple_type(impl.args[0])
+#			# only works for 1 ATM, needs overloading for more
+#			constructors.each do |c|
+#				add_op(name, c)
+#			end	
+#		elsif impl.node_type == :type
+#			t_obj = impl
+#		end
+#		
+#		@stack.add_type(name, t_obj)
+#	end
 		
 
 	def check_mutability(node, args)
@@ -243,19 +235,19 @@ class Interpreter
 		end
 
 		vname = var.symbol
-		ret = node.scope.lookup_name(vname, VAR)
+		ret = node.scope.lookup_obj(vname, VAR)
 		ret || error(node.line, "unable to find #{vname}")
-		ret.tags[mutability] || error(node.line, "#{vname} seems to be const")
+		ret.tags[:const] && error(node.line, "#{vname} seems to be const")
 
 		ret
 	end
 	
-	def assign(node, args)
+	def assign(_node, args)
 		val = args[1]
 
-		vname = args[1].symbol
-		ret = node.scope.lookup_name(vname, VAR, val)
-		ret || error(node.line, "unable to assign to #{vname}")
+		var = args[0] # IVar object
+		var.assign(val)
+		
 		return val
 	end
 		
@@ -269,9 +261,7 @@ class Interpreter
 		# $0, etc.
 		args.each do |a|
 			puts "auto var: #{a[0]} = #{a[1]}"
-			# TODO use define
-			#define(node, a[0], a[1])
-			node.scope.add_name(a[0], a[1], VAR)
+			node.scope.define_var(a[0], a[1], true)
 		end
 		
 		puts "eval quote w/ args:"
@@ -294,12 +284,19 @@ class Interpreter
 		symbol = node.symbol
 		puts "\t-> #{ntype}, #{symbol}"
 
+		
+		# code
+		if ntype == :rocode || ntype == :rccode
+			return node
+		end
+
+
 		# variables
 		if ntype == :identifier || ntype == :sidentifier
 			var_name = symbol
 			ret = node.scope.lookup_var(var_name)
 			ret || error(node.line, "symbol #{var_name} not found")
-			return ret
+			return ret.value
 		end
 
 		# types
@@ -307,19 +304,14 @@ class Interpreter
 			type_name = symbol
 			ret = node.lookup_type(type_name)
 			ret || error(node.line, "type #{type_name} not found")
-			return ret
-		end
-
-		# code
-		if ntype == :rocode || ntype == :rccode
-			return node
+			return ret.value
 		end
 
 		# literals
 		if node.token.typ == :term
 			op = node.scope.lookup_op(ntype)
 			op || error(node.line, "op #{ntype} not found")
-			return op.evaluate(node, [])
+			return op.value.evaluate(node, [])
 		end
 
 		# everything else is operators or function calls
@@ -339,7 +331,7 @@ class Interpreter
 			if (macros = node.scope.lookup_macro(oper.symbol))
 				puts "found macro #{symbol}:"
 				puts "----"
-				repl_node = apply_macro(node, macros)
+				repl_node = apply_macro(node, macros.value)
 
 				if repl_node == nil
 					puts(node.token.line, "no match found for macro #{op_name}")
@@ -357,7 +349,7 @@ class Interpreter
 			op || error(node.line, "op #{op_name} not found")
 			op_args.map!{|arg| evaluate(arg)}
 			#puts "args: #{op_args}"
-			return op.evaluate(node, op_args)
+			return op.value.evaluate(node, op_args)
 		end
 
 		error(node.token.line, "unknown node #{ntype}")
@@ -395,104 +387,36 @@ def simple_function(body)
 	end
 end
 
-def function(fn_decl)
-	arg_decl = fn_decl.args[0]
-	if arg_decl.node_type != :rccode
-		puts "fn decl requires arg block"
-		exit
+
+# about as quick and dirty as possible
+
+class Integer
+	def mu_type
+		:Int
 	end
 
-	args = arg_decl.args
-	if args.size == 0
-		arg_list = []
-	elsif args.size == 1 && args[0].node_type == :identifier
-		arg_list = [args[0]]
-	elsif args.size == 1 && args[0].node_type == :tuple1
-		arg_list = args[0].args
-	else
-		puts "malformed arg list"
-		exit
+	def mu_const
+		true
 	end
-	
-	fn_body = fn_decl.args[1]
-	if fn_body.node_type != :rccode
-		puts "fn decl requires c-code block"
-		exit
+end
+
+class String
+	def mu_type
+		:String
 	end
 
-	lambda do |node, args|
-
-		if arg_list.size != args.size
-			puts "#{arg_list.size} arguments expected"
-			exit
-		end
-
-		fn_args = []
-		for i in 0...arg_list.size
-			arg = arg_list[i].symbol
-			val = args[i]
-			fn_args << [arg, val]
-
-			puts("arg ##{i}: #{arg} = #{val}")
-		end
-
-		evaluate_quote(fn_body, fn_args)
+	def mu_const
+		true
 	end
 end
 
 
-def config_interp(int)
-	int.add_s_type :I, 0
-	int.add_s_type :F, 0.0
-	int.add_s_type :S, ""
-	
-	int.add_op :$defvar, lambda{ |node, args| int.define(node, args) }
-	int.add_op :$defsfun, lambda{ |node, args| int.define_simple_function(node, args) }
-	int.add_op :$replace, lambda{ |node, args| int.define_macro(node, args) }
-	int.add_op :$assign, lambda{ |node, args| int.assign(node, args) }
-	int.add_op :ref, lambda{ |node, args| int.check_mutability(node, args) }
-	
-	int.add_op :nop, lambda{|node, args| nil}
+class Array
+	def mu_type
+		("Array" + "$" + self[0].mu_type.to_s).to_sym
+	end
 
-	int.add_op :integer, lambda{|node, args| node.token.string.to_i}
-	int.add_op :string, lambda{|node, args| node.token.string}
-
-	int.add_op :splat, lambda{|node, args|
-		res = args[0].is_a?(Array) ? args[0] : [ args[0] ]
-		res + (args[1].is_a?(Array) ? args[1] : [ args[1] ])
-		}
-	int.add_op :tuple1, lambda{|node, args| [*args]}
-	
-	int.add_op :index, lambda{|node, args| args[0][args[1]]}
-	int.add_op :s_index, lambda{|node, args| args[0][args[1]]}
-
-	int.add_op :arrow, lambda{|node, args| int.join_blocks(node, args) }
-	
-	int.add_op :plus, binary(:+)
-	int.add_op :minus, binary(:-)
-	int.add_op :times, binary(:*)
-	int.add_op :divide, binary(:/)
-	int.add_op :power, binary(:^)
-	int.add_op :isequal, binary(:==)
-	int.add_op :isunequal, binary(:!=)
-	int.add_op :isless, binary(:<)
-	int.add_op :isgreater, binary(:>)
-
-	int.add_op :println, lambda {|node, args|
-		args || error(0, "println needs non-nil arg")
-		puts args }
-
-	int.add_op :if, lambda{|node, args|
-		if args[0] == true
-			int.evaluate_quote(args[1])
-		elsif args.length > 2
-			int.evaluate_quote(args[2])
-		else
-			nil
-		end}
-
-	int.add_op :while, lambda{|node, args|
-		while int.evaluate_quote(args[0])
-			int.evaluate_quote(args[1])
-		end} 
+	def mu_const
+		true
+	end
 end

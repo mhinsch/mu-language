@@ -15,6 +15,18 @@ class ReplMacro
 		puts
 	end
 
+	def mu_type
+		:macro
+	end
+	
+	def match_one_or_many(arg)
+		arg.node_type == :sidentifier && arg.symbol[-1] == '_' && arg.symbol[-2] != '_'
+	end
+	
+	def match_remaining(arg)
+		arg.node_type == :sidentifier && arg.symbol[-1] == '_' && arg.symbol[-2] == '_'
+	end
+	
 	def matches?(pattern, node)
 		# $name eats entire node
 		if pattern.node_type == :sidentifier
@@ -59,13 +71,11 @@ class ReplMacro
 				return nil
 			end
 			arg = pargs[i]
-			# $name_ collects the rest of the arguments in a tuple
-			if arg.node_type == :sidentifier && arg.symbol[-1] == '_'
-				nnode = Node.create_call(",", :tuple1)
-				nnode.args.concat(nargs[i..-1])
-				#if m.has_key?(arg.symbol[0..-1])
-					
-				m[arg.symbol] = nnode
+			# $name__ collects the rest of the arguments in a tuple
+			# $name_ returns a tuple or a single value
+			# $name only matches single values
+			if match_remaining(arg) || (match_one_or_many(arg) && i<(nargs.size-1))
+				m[arg.symbol] = Node.create_tuple(nargs[i..-1])
 				return m
 			end
 

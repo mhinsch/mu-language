@@ -3,8 +3,40 @@ VAR = 1
 OP = 2
 TYPE = 3
 
+# TODO
+# * change builtin types to tagging contructors
+# * store literals in ILit?
+
+
 
 $scope_id = 0
+
+
+class IObj
+	attr_reader :name, :value, :tags
+
+	def initialize(name, value, tags = Hash.new)
+		@name = name
+		@value = value
+		@tags = tags
+	end
+
+	def assign(new_val)
+		@val = new_val
+	end
+
+	def set_tag(tag, val)
+		@tags[tag] = val
+	end
+
+	def mu_type
+		@tags[:type]
+	end
+
+	def mu_const
+		@tags[:const]
+	end
+end
 
 
 class IScope
@@ -39,20 +71,16 @@ class IScope
 	end
 
 	
-	def has_name?(name, kind)
+	def has_obj?(name, kind)
 		@scopes[kind].has_key?(name)
 	end
 
-	def name(name, kind)
+	def get_obj(name, kind)
 		@scopes[kind][name]
-	end
-
-	def add_name(name, val, kind)
-		@scopes[kind][name] = val
 	end
 		
 	def set_value(name, kind, val)
-		@scopes[kind][name] = val
+		get_obj(name, kind).set_value(val)
 	end
 	
 	def open?
@@ -63,16 +91,16 @@ class IScope
 		@parent == nil
 	end
 	
-	def lookup_name(a_name, kind, new_val = nil, const = false)
-		if new_val && const
-			error("#{a_name} is const")
+	def lookup_obj(a_name, kind, new_val = nil, readonly = false)
+		if new_val && readonly
+			error("#{a_name} is readonly")
 		end
 		
-		if has_name?(a_name, kind)
+		if has_obj?(a_name, kind)
 			if new_val != nil
 				set_value(a_name, kind, new_val)
 			end
-			return name(a_name, kind)
+			return get_obj(a_name, kind)
 		end
 		
 		if ! open? && new_val != nil
@@ -83,40 +111,51 @@ class IScope
 			return nil
 		end
 
-		@parent.lookup_name(a_name, kind, new_val, const || !open?)
+		@parent.lookup_obj(a_name, kind, new_val, readonly || !open?)
 	end
 
 	def lookup_macro(vname)
-		lookup_name(vname, MACRO, nil, false)
+		lookup_obj(vname, MACRO, nil, false)
 	end
 
-	def add_macro(vname, val)
-		puts "adding macro #{vname}"
-		add_name(vname, val, MACRO)
-	end
-	
 	def lookup_var(vname)
-		lookup_name(vname, VAR)
-	end
-
-	def add_var(name, val)
-		add_name(name, val, VAR)
+		lookup_obj(vname, VAR)
 	end
 
 	def lookup_op(oname)
-		lookup_name(oname, OP)
-	end
-
-	def add_op(name, val)
-		add_name(name, val, OP)
+		lookup_obj(oname, OP)
 	end
 
 	def lookup_type(tname)
-		lookup_name(tname, TYPE)
+		lookup_obj(tname, TYPE)
 	end
 
-	def add_type(name, val)
-		add_name(name, val, TYPE)
+	def define_macro(name, val)
+		define_obj(name, val, false, MACRO)
+	end
+	
+	def define_var(name, val, mut)
+		define_obj(name, val, mut, VAR)
+	end
+	
+	def define_op(name, val)
+		define_obj(name, val, false, OP)
+	end
+	
+	def define_type(name, val)
+		define_obj(name, val, false, TYPE)
+	end
+	
+	def define_obj(name, val, const, kind=VAR)
+		var = IObj.new(name, val, {:const => const})
+		var.set_tag(:type, val.mu_type)
+		
+		@scopes[kind][name] = var
+
+		puts "define #{name}"
+		dump
+		
+		val
 	end
 end
 

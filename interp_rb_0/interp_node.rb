@@ -1,6 +1,12 @@
 
 class Node
 
+	def self.create_tuple(args, ttype=:tuple1)
+		node = create_call(",", ttype)
+		node.args.concat(args)
+		node
+	end
+
 	def fncall?
 		node_type == :call
 	end
@@ -35,7 +41,7 @@ class Node
 		end
 
 		if @args.size > 1
-			error(line, "unquoting tuples not supported yet")
+			return Node.create_tuple(@args)
 		end
 
 		@args[0]

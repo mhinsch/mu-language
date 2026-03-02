@@ -32,7 +32,7 @@ ast.remove_pars
 #ast.remove_nops(:nop)
 ast.fun_arg_tuples
 ast.standardise_op_calls(Set[:plus, :minus, :times, :divide, :power, :def, :tuple1, :index,
-	:s_index, :isequal, :isless, :defmacro, :assign, :arrow, :splat, :ref])
+	:s_index, :isequal, :isless, :defmacro, :assign, :arrow, :splat, :ref, :fundef])
 ast.remove_opids
 ast.assign_scope(nil)
 
