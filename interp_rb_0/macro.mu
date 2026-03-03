@@ -14,7 +14,7 @@ $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 ;; $:... is special-cased in the parser atm, needs a better solution
 [$:tuple1 $args__ : $val] :=> [$defvar' [\$args__], \$val]
 ;; mutable variables
-;; ref doesn't evaluate, so this is fine
+;; better solution would be nice
 [$var! : $val] :=> [$defvar' [\$var], \$val, 0]
 
 ;; function calls
@@ -42,6 +42,8 @@ $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 [$expr.$idx] :=> [$index' \$expr, [\$idx]]
 
 
+;; works out of the box
+(x, y)! : (1, 2)
 
 a : 1+5
 

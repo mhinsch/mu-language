@@ -137,7 +137,7 @@ class Interpreter
 		names.each_index do |i|
 			n = names[i]
 			v = vals[i]
-			res << node.scope.define_name_value(node, n, v, mut)
+			res << define_name_value(node, n, v, mut)
 		end
 
 		res
@@ -251,6 +251,13 @@ class Interpreter
 		return val
 	end
 		
+	# TODO generalize for named components
+	def static_index(node, args)
+		cont = args[0]
+		idx = args[1].unquote
+
+		cont[idx.token.string.to_i]
+	end
 	
 	def evaluate_quote(node, args = [])
 		node.code? || error("not a quote")
