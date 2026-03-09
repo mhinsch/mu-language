@@ -147,15 +147,15 @@ class IScope
 	end
 	
 	def define_obj(name, val, const, kind=VAR)
-		var = IObj.new(name, val, {:const => const})
-		var.set_tag(:type, val.mu_type)
+		var = IObj.new(name, val,
+			{:const => const, :kind => kind, :type => val.mu_type})
 		
 		@scopes[kind][name] = var
 
 		puts "define #{name}"
-		dump
+		#dump
 		
-		val
+		var
 	end
 end
 

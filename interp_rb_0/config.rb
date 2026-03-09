@@ -97,7 +97,6 @@ def config_interp(int)
 	int.add_s_type :S, ""
 	
 	int.add_op :$defvar, lambda{ |node, args| int.define(node, args) }
-	int.add_op :$defsfun, lambda{ |node, args| int.define_simple_function(node, args) }
 	int.add_op :$replace, lambda{ |node, args| int.define_macro(node, args) }
 	int.add_op :$assign, lambda{ |node, args| int.assign(node, args) }
 	int.add_op :$mut, lambda{ |node, args| int.check_mutability(node, args) }

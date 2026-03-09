@@ -9,9 +9,9 @@ class ReplMacro
 		@pattern = pattern
 		@template = template
 		puts "created macro"
-		@pattern.dump_short
+		print "\t"; @pattern.dump_short
 		puts "=>"
-		@template.dump_short
+		print "\t"; @template.dump_short
 		puts
 	end
 
@@ -30,13 +30,13 @@ class ReplMacro
 	def matches?(pattern, node)
 		# $name eats entire node
 		if pattern.node_type == :sidentifier
-			puts "#{pattern.symbol} matches #{node.node_type}"
+			puts "\t#{pattern.symbol} matches #{node.node_type}"
 			return {pattern.symbol => node}
 		end
 		
 		# in all other cases node types have to be identical
 		if pattern.node_type != node.node_type
-			puts "#{pattern.node_type} != #{node.node_type}"
+			puts "\t#{pattern.node_type} != #{node.node_type}"
 			return nil
 		end
 
@@ -97,8 +97,8 @@ class ReplMacro
 	end
 	
 	def match(node)
-		puts "matching:"
-		@pattern.dump_short; puts
+		puts "\tmatching:"
+		print "\t"; @pattern.dump_short; puts
 		matches?(@pattern, node)
 	end
 
@@ -113,7 +113,7 @@ class ReplMacro
 			if repl == nil
 				error("unknown insertion symbol #{var.symbol}")
 			end
-			puts "found macro arg #{var.symbol}!"
+			puts "\tfound macro arg #{var.symbol}!"
 			return repl
 		end
 

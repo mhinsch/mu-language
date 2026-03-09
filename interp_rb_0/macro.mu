@@ -21,7 +21,8 @@ $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 
 ;; strictly plain functions, no overloading etc.
 ;; $0, $1, ... are always defined, but we want to use named args
-[$fname $args_ : $block] :=> [ $defsfun' [\$fname], { \$args_ : $0 } => \$block ]
+;;[$fname $args_ : $block] :=> [ $defsfun' [\$fname], { \$args_ : $0 } => \$block ]
+[$fname $args_ : $block] :=> [ \$fname : { \$args_ : $0 } => \$block ]
 
 ;; overloading
 ;; with a bit of reflection match should be implementable as a regular function
@@ -42,6 +43,15 @@ $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 [$expr.$idx] :=> [$index' \$expr, [\$idx]]
 
 
+p (f, x) : 
+	{
+	println' f x
+	}
+
+
+p' {$1 * 2}, 21
+
+
 ;; works out of the box
 (x, y)! : (1, 2)
 
@@ -49,7 +59,7 @@ a : 1+5
 
 b : (1, 2, 3)
 
-c! : 0
+c! : (0, 0)
 
 c = b.1
 

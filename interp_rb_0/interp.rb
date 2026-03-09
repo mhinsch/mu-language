@@ -151,20 +151,11 @@ class Interpreter
 			error(node.line, "can't define \"#{ntype}\"")
 		end
 		
-		node.scope.define_var(str, val, mut)
-	end
-
-
-	def define_simple_function(node, args)
-		val = args[1]
-		lhs = args[0].unquote
-		str = lhs.symbol
-
-		if ! val.code?
-			error("quote expected in fn def")
+		if val.class == Node && val.code?
+			add_op(str, simple_function(val), node)
+		else
+			node.scope.define_var(str, val, mut)
 		end
-
-		add_op(str, simple_function(val), node)
 	end
 
 
@@ -192,8 +183,8 @@ class Interpreter
 	
 	def apply_macro(args, macros)
 
-		puts "macro - trying to match: "
-		args.dump_short; puts
+		puts "\tmacro - trying to match: "
+		print "\t"; args.dump_short; puts
 		
 		macros.each do |m|
 			mt = m.match(args)
@@ -201,30 +192,10 @@ class Interpreter
 				return m.replace(mt)
 			end
 		end
-		puts "macro not found"
+		puts "\tmacro not found"
 		nil
 	end
 
-	
-#	def type_def(name, impl)
-#		if impl.node_type == :rccode 
-#			if impl.args[0].node_type != :tuple1
-#				puts "expected list of definitions"
-#				exit
-#			end
-#			
-#			t_obj, constructors = eval_as_tuple_type(impl.args[0])
-#			# only works for 1 ATM, needs overloading for more
-#			constructors.each do |c|
-#				add_op(name, c)
-#			end	
-#		elsif impl.node_type == :type
-#			t_obj = impl
-#		end
-#		
-#		@stack.add_type(name, t_obj)
-#	end
-		
 
 	def check_mutability(node, args)
 		var = args[0].unquote
@@ -251,7 +222,9 @@ class Interpreter
 		return val
 	end
 		
-	# TODO generalize for named components
+	# TODO
+	# generalize for named components
+	# make it work for lvalues
 	def static_index(node, args)
 		cont = args[0]
 		idx = args[1].unquote
@@ -263,20 +236,25 @@ class Interpreter
 		node.code? || error("not a quote")
 
 		puts "bare eval quote:"
-		node.scope.dump
+		#node.scope.dump
 		
 		# $0, etc.
-		args.each do |a|
-			puts "auto var: #{a[0]} = #{a[1]}"
-			node.scope.define_var(a[0], a[1], true)
+		if ! args.empty?
+			node.scope.define_obj(:$0, args, true)
+
+			for i in 0...args.size
+				arg_name = "$#{i+1}".to_sym
+				#puts "auto var: #{arg_name} = #{args[i]}"
+				node.scope.define_obj(arg_name, args[i], true)
+			end
 		end
 		
 		puts "eval quote w/ args:"
-		node.scope.dump
+		#node.scope.dump
 
 		ret = nil
 		for arg in node.args
-			print "scope line "; arg.scope.dump
+			#print "scope line "; arg.scope.dump
 			#arg.scope.parent == node.scope || error(1, "scope!!")
 			ret = evaluate(arg)
 		end
@@ -341,22 +319,30 @@ class Interpreter
 				repl_node = apply_macro(node, macros.value)
 
 				if repl_node == nil
-					puts(node.token.line, "no match found for macro #{op_name}")
+					puts("\t", node.token.line, "no match found for macro #{op_name}")
 				else
 					# quick and dirty solution
 					# TODO do properly
 					repl_node.copy_scope(node)			
-					puts "macro result:"
-					repl_node.scope.dump
-					repl_node.dump_short; puts
+					puts "\tmacro result:"
+					#repl_node.scope.dump
+					print "\t"; repl_node.dump_short; puts
 					return evaluate(repl_node)
 				end
 			end
-			op = node.scope.lookup_op(op_name)
-			op || error(node.line, "op #{op_name} not found")
+
+			if op_name == :call
+				op = evaluate(oper)
+			elsif op_name != :rccode && op_name != :rocode
+				op = node.scope.lookup_op(op_name)
+				op || error(node.line, "op #{op_name} not found")
+			end
+			
 			op_args.map!{|arg| evaluate(arg)}
 			#puts "args: #{op_args}"
-			return op.value.evaluate(node, op_args)
+			return op_name == :rccode || op_name == :rocode ?
+					evaluate_quote(oper, op_args) :
+					op.value.evaluate(node, op_args)
 		end
 
 		error(node.token.line, "unknown node #{ntype}")
@@ -385,12 +371,8 @@ def simple_function(body)
 		puts "sf lambda body: "
 		body.dump_short; puts
 		#fn_args = [[:$0, Node.create_call(",", :tuple1, args:arg_values)]]
-		fn_args = [[:$0, arg_values]]
-		for i in 0...arg_values.size
-			fn_args << ["$#{i+1}".to_sym, arg_values[i]]
-		end
 
-		evaluate_quote(body, fn_args)
+		evaluate_quote(body, arg_values)
 	end
 end
 
@@ -425,5 +407,11 @@ class Array
 
 	def mu_const
 		true
+	end
+end
+
+class Node
+	def mu_type
+		:node
 	end
 end
