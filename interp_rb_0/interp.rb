@@ -143,6 +143,7 @@ class Interpreter
 		res
 	end
 
+	# TODO enable tuple-local scope for named function args
 	def define_name_value(node, lhs, val, mut)
 		ntype = lhs.node_type
 		str = lhs.symbol
@@ -153,6 +154,7 @@ class Interpreter
 		
 		if val.class == Node && val.code?
 			add_op(str, simple_function(val), node)
+			#node.scope.define_op(str, val)
 		else
 			node.scope.define_var(str, val, mut)
 		end

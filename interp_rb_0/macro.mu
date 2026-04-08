@@ -21,23 +21,34 @@ $replace' [$pattern :=> $replacement], [$replace' \$pattern, \$replacement]
 
 ;; strictly plain functions, no overloading etc.
 ;; $0, $1, ... are always defined, but we want to use named args
+;; TODO maybe use * for plain concat and => for the entire thing
 ;;[$fname $args_ : $block] :=> [ $defsfun' [\$fname], { \$args_ : $0 } => \$block ]
 [$fname $args_ : $block] :=> [ \$fname : { \$args_ : $0 } => \$block ]
 
 ;; overloading
 ;; with a bit of reflection match should be implementable as a regular function
+;; TODO this means that polymorphic functions are strictly bound to a name, i.e. no reassignment
+;; TODO second line therefore has to be builtin
+;;[$fname $args_ :: $block] :=> 
+;;	[ 
+;;	$addpattern' [\$fname], [\$args_], { \$args_ : $0 } => \$block
+;;	[ \$fname $callargs_ ] :=> [ match([\$fname], [\\$callargs_])' \\$callargs_ ] 
+;;	]
 
-[$fname $args_ :: $block] :=> 
-	[ 
-	$addpattern' [\$fname], [\$args_], { \$args_ : $0 } => \$block
-	[ \$fname $callargs_ ] :=> [ match([\$fname], [\\$callargs_])' \\$callargs_ ] 
-	]
+;; maybe like this?
+;; :| would try to statically match the pattern in $args_ against the actual arguments
+;; and bind as appropriate
+;; NOTE => simply inserts, so static matching might be an issue
+;; TODO how to encode *addition* of pattern to existing fn?
+;; TODO maybe use :*?
+[$fname $args_ :: $block] :=> [ \$fname : { \$args_ :| $0 } => \$block ]
 
 [$var!] :=> [$mut [\$var]]
 
 ;; finally, this is the plain definition
 [$var : $val] :=> [$defvar' [ \$var ], \$val] 
 ;; plain assignment
+;; TODO maybe ditch and make ! on lhs obligatory
 [$lhs = $rhs] :=> [$assign' \$lhs!, \$rhs]
 ;; static index needs a symbol or a statically evaluatable expression
 [$expr.$idx] :=> [$index' \$expr, [\$idx]]
